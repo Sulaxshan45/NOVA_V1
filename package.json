@@ -1,0 +1,18 @@
+{
+  "name": "nova-pm-pro",
+  "version": "1.0.0",
+  "description": "NOVA — Construction Project Management",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "google-auth-library": "^9.11.0",
+    "twilio": "^6.0.2"
+  }
+}

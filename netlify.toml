@@ -1,0 +1,54 @@
+[build]
+  publish = "."
+  command = "echo 'Static app — no build step needed'"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Route all /api/* and /auth/* to Netlify Functions
+[[redirects]]
+  from = "/api/auth/session"
+  to = "/.netlify/functions/auth-session"
+  status = 200
+
+[[redirects]]
+  from = "/api/auth/guest"
+  to = "/.netlify/functions/auth-guest"
+  status = 200
+
+[[redirects]]
+  from = "/api/auth/logout"
+  to = "/.netlify/functions/auth-logout"
+  status = 200
+
+[[redirects]]
+  from = "/api/auth/delete-account"
+  to = "/.netlify/functions/auth-delete-account"
+  status = 200
+
+[[redirects]]
+  from = "/api/auth/google"
+  to = "/.netlify/functions/auth-google"
+  status = 200
+
+[[redirects]]
+  from = "/auth/google/callback"
+  to = "/.netlify/functions/auth-google-callback"
+  status = 200
+
+[[redirects]]
+  from = "/api/sync/load"
+  to = "/.netlify/functions/sync-load"
+  status = 200
+
+[[redirects]]
+  from = "/api/sync/save"
+  to = "/.netlify/functions/sync-save"
+  status = 200
+
+# SPA fallback — all unmatched routes go to index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
