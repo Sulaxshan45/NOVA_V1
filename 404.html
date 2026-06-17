@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>NOVA PM — Redirecting...</title>
+  <!-- GitHub Pages SPA redirect hack -->
+  <script>
+    // Store the full path and redirect to index.html
+    // This is needed because GitHub Pages doesn't support SPA routing
+    const path = window.location.pathname + window.location.search + window.location.hash;
+    const repoName = '/NOVA-PM1'; // Change this to your repo name
+    sessionStorage.setItem('spa_redirect', path);
+    window.location.replace(repoName + '/');
+  </script>
+</head>
+<body>
+  <p>Redirecting...</p>
+</body>
+</html>

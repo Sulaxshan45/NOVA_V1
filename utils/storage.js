@@ -19,20 +19,10 @@ function load(key) {
   }
 }
 
-async function triggerBackendSync() {
-  const data = exportAllData();
-  try {
-    const res = await fetch('/api/sync/save', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    if (!res.ok) {
-      console.warn('Backend sync failed:', res.statusText);
-    }
-  } catch (err) {
-    console.error('Backend sync connection error:', err);
-  }
+// Backend sync is disabled for GitHub Pages (no server)
+// All data is stored in localStorage on the device
+function triggerBackendSync() {
+  // No-op for GitHub Pages static hosting
 }
 
 function save(key, data) {
@@ -97,20 +87,7 @@ export function importAllData(data) {
 }
 
 export async function loadWorkspaceFromServer() {
-  try {
-    const res = await fetch('/api/sync/load');
-    if (res.ok) {
-      const data = await res.json();
-      if (data.projects) localStorage.setItem(KEYS.PROJECTS, JSON.stringify(data.projects));
-      if (data.tasks) localStorage.setItem(KEYS.TASKS, JSON.stringify(data.tasks));
-      if (data.materials) localStorage.setItem(KEYS.MATERIALS, JSON.stringify(data.materials));
-      if (data.expenses) localStorage.setItem(KEYS.EXPENSES, JSON.stringify(data.expenses));
-      if (data.settings) localStorage.setItem(KEYS.SETTINGS, JSON.stringify(data.settings));
-      return true;
-    }
-  } catch (err) {
-    console.error('Failed to load workspace from server:', err);
-  }
+  // No-op for GitHub Pages — data lives in localStorage
   return false;
 }
 

@@ -13,31 +13,30 @@ import { getSettings, saveSettings, getProjects, saveProjects, getTasks, saveTas
 import { formatDate } from './utils/helpers.js';
 
 // ============================================================
-// AUTH STATE & SESSION
+// GOOGLE CLIENT ID — set this to your Google OAuth Client ID
+// ============================================================
+const GOOGLE_CLIENT_ID = ''; // <-- PASTE YOUR CLIENT ID HERE
+
+// ============================================================
+// AUTH STATE & SESSION (localStorage-based — no server needed)
 // ============================================================
 let currentUser = null;
 
-async function checkAuthSession() {
+function checkAuthSession() {
   try {
-    const res = await fetch('/api/auth/session');
-    if (!res.ok) throw new Error('Session check failed');
-    const data = await res.json();
-    if (data.loggedIn && data.user) {
-      currentUser = data.user;
-      await loadWorkspaceFromServer();
+    const stored = localStorage.getItem('nova_session_user');
+    if (stored) {
+      currentUser = JSON.parse(stored);
       updateSidebarUser();
-      
       const loginScr = document.getElementById('login-screen');
       const appSh = document.getElementById('app-shell');
       if (loginScr) loginScr.style.display = 'none';
       if (appSh) appSh.style.display = 'flex';
-      
       return true;
     }
   } catch (err) {
-    console.error('Auth Session Check Error:', err);
+    console.error('Session check error:', err);
   }
-
   currentUser = null;
   updateSidebarUser();
   const loginScr = document.getElementById('login-screen');
@@ -581,8 +580,8 @@ function setupSidebar() {
 // INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
-  // Check session first
-  const isLoggedIn = await checkAuthSession();
+  // Check localStorage session (no server needed)
+  const isLoggedIn = checkAuthSession();
 
   // Wire sidebar navigation
   document.querySelectorAll('.nav-item').forEach(item => {
@@ -639,55 +638,94 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Guest Sign In Button
-  document.getElementById('btn-login-guest')?.addEventListener('click', async () => {
-    try {
-      const res = await fetch('/api/auth/guest', { method: 'POST' });
-      const data = await res.json();
-      if (data.success) {
-        showToast('Logged in as Guest User ✓', 'success');
-        await checkAuthSession();
-        initProjects();
-        const project = getActiveProject();
-        updateNavVisibility();
-        window.navigateTo(project ? 'dashboard' : 'projects');
-      } else {
-        showToast('Guest login failed', 'error');
-      }
-    } catch (err) {
-      showToast('Connection failed: ' + err.message, 'error');
+  // Google Sign-In (client-side GSI popup — works on GitHub Pages)
+  document.getElementById('btn-login-google')?.addEventListener('click', () => {
+    if (!GOOGLE_CLIENT_ID) {
+      showToast('Google Client ID not configured. Use Guest login or set GOOGLE_CLIENT_ID in app.js', 'error');
+      return;
     }
+    try {
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: (response) => {
+          // Decode the JWT credential returned by Google
+          const base64 = response.credential.split('.')[1];
+          const profile = JSON.parse(atob(base64.replace(/-/g, '+').replace(/_/g, '/')));
+          const user = {
+            id: `google_${profile.sub}`,
+            name: profile.name,
+            email: profile.email,
+            picture: profile.picture
+          };
+          localStorage.setItem('nova_session_user', JSON.stringify(user));
+          currentUser = user;
+          showToast(`Welcome, ${user.name} ✓`, 'success');
+          updateSidebarUser();
+          const loginScr = document.getElementById('login-screen');
+          const appSh = document.getElementById('app-shell');
+          if (loginScr) loginScr.style.display = 'none';
+          if (appSh) appSh.style.display = 'flex';
+          initProjects();
+          const project = getActiveProject();
+          updateNavVisibility();
+          window.navigateTo(project ? 'dashboard' : 'projects');
+        },
+        use_fedcm_for_prompt: true
+      });
+      google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          // Fallback: open popup
+          google.accounts.id.renderButton(
+            document.getElementById('btn-login-google'),
+            { type: 'standard', theme: 'outline', size: 'large' }
+          );
+        }
+      });
+    } catch (err) {
+      showToast('Google Sign-In failed: ' + err.message, 'error');
+    }
+  });
+
+  // Guest Sign In Button
+  document.getElementById('btn-login-guest')?.addEventListener('click', () => {
+    const guestId = `guest_${Math.random().toString(36).substring(2, 11)}`;
+    const user = {
+      id: guestId,
+      name: 'Guest User',
+      email: 'guest@nova-construction.com',
+      picture: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80'
+    };
+    localStorage.setItem('nova_session_user', JSON.stringify(user));
+    currentUser = user;
+    showToast('Logged in as Guest User ✓', 'success');
+    updateSidebarUser();
+    const loginScr = document.getElementById('login-screen');
+    const appSh = document.getElementById('app-shell');
+    if (loginScr) loginScr.style.display = 'none';
+    if (appSh) appSh.style.display = 'flex';
+    initProjects();
+    const project = getActiveProject();
+    updateNavVisibility();
+    window.navigateTo(project ? 'dashboard' : 'projects');
   });
 
   // Delete Account Button Handler
   document.getElementById('btn-delete-account')?.addEventListener('click', () => {
     userDropdown?.classList.remove('user-dropdown--active');
-    showConfirm('This will permanently delete your account and wipe all your projects, tasks, and data from the database. Are you sure?', async () => {
-      try {
-        const res = await fetch('/api/auth/delete-account', { method: 'POST' });
-        if (res.ok) {
-          clearLocalSessionCache();
-          showToast('Account and all workspace data deleted', 'info');
-          await checkAuthSession();
-        } else {
-          showToast('Failed to delete account', 'error');
-        }
-      } catch (err) {
-        showToast('Network error: ' + err.message, 'error');
-      }
+    showConfirm('This will permanently delete your account and wipe all your data from this device. Are you sure?', () => {
+      clearLocalSessionCache();
+      localStorage.removeItem('nova_session_user');
+      currentUser = null;
+      showToast('Account and all data deleted', 'info');
+      checkAuthSession();
     });
   });
-  document.getElementById('btn-logout')?.addEventListener('click', async () => {
-    try {
-      const res = await fetch('/api/auth/logout', { method: 'POST' });
-      if (res.ok) {
-        clearLocalSessionCache();
-        showToast('Logged out successfully', 'info');
-        await checkAuthSession();
-      }
-    } catch (err) {
-      showToast('Logout failed: ' + err.message, 'error');
-    }
+  document.getElementById('btn-logout')?.addEventListener('click', () => {
+    localStorage.removeItem('nova_session_user');
+    clearLocalSessionCache();
+    currentUser = null;
+    showToast('Logged out successfully', 'info');
+    checkAuthSession();
   });
 
   if (isLoggedIn) {
