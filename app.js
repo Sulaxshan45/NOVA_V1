@@ -908,13 +908,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const templateParams = {
         name: currentUser.name,
+        user_name: currentUser.name,
         user_email: currentUser.email,
+        email: currentUser.email,
+        to_email: currentUser.email,
+        reply_to: currentUser.email,
         delete_link: deleteLink
       };
 
       try {
-        emailjs.init(EMAILJS_PUBLIC_KEY);
-        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams);
+        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams, EMAILJS_PUBLIC_KEY);
         showToast('Deletion email sent! Please check your inbox.', 'success');
       } catch (err) {
         showToast('Failed to send email. Please try again later.', 'error');
