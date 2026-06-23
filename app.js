@@ -59,8 +59,11 @@ function updateSidebarUser() {
     if (nameEl) nameEl.textContent = currentUser.name || 'User';
     if (emailEl) emailEl.textContent = currentUser.email || '';
     if (companyEl) {
-      if (currentUser.company) {
-        companyEl.textContent = '🏢 ' + currentUser.company;
+      const parts = [];
+      if (currentUser.designation) parts.push(currentUser.designation);
+      if (currentUser.company) parts.push('🏢 ' + currentUser.company);
+      if (parts.length) {
+        companyEl.innerHTML = parts.join('<br>');
         companyEl.style.display = '';
       } else {
         companyEl.style.display = 'none';
@@ -581,6 +584,10 @@ function showProfileSetup(prefillName, prefillEmail, prefillPicture, onComplete)
       <input id="setup-name" class="form-input" type="text" placeholder="e.g. Sulaxshan Kumar" value="${prefillName || ''}" autocomplete="name" maxlength="60" />
     </div>
     <div class="form-group" style="margin-top:14px;">
+      <label class="form-label">Job Title / Designation</label>
+      <input id="setup-designation" class="form-input" type="text" placeholder="e.g. Project Manager, Site Engineer, Owner" maxlength="80" />
+    </div>
+    <div class="form-group" style="margin-top:14px;">
       <label class="form-label">Company / Organization</label>
       <input id="setup-company" class="form-input" type="text" placeholder="e.g. ABC Construction Pvt. Ltd." autocomplete="organization" maxlength="80" />
     </div>
@@ -596,6 +603,7 @@ function showProfileSetup(prefillName, prefillEmail, prefillPicture, onComplete)
 
     const doSubmit = () => {
       const name = document.getElementById('setup-name')?.value.trim();
+      const designation = document.getElementById('setup-designation')?.value.trim();
       const company = document.getElementById('setup-company')?.value.trim();
       if (!name) {
         const inp = document.getElementById('setup-name');
@@ -605,14 +613,16 @@ function showProfileSetup(prefillName, prefillEmail, prefillPicture, onComplete)
         return;
       }
       closeModal();
-      onComplete(name, company || '');
+      onComplete(name, designation || '', company || '');
     };
 
     document.getElementById('setup-continue-btn')?.addEventListener('click', doSubmit);
+    document.getElementById('setup-name')?.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('setup-designation')?.focus(); });
+    document.getElementById('setup-designation')?.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('setup-company')?.focus(); });
     document.getElementById('setup-company')?.addEventListener('keydown', e => { if (e.key === 'Enter') doSubmit(); });
-    document.getElementById('setup-name')?.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('setup-company')?.focus(); });
   }, 50);
 }
+
 
 // ============================================================
 // SIDEBAR TOGGLE (mobile)
@@ -707,11 +717,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           // Decode the JWT credential returned by Google
           const base64 = response.credential.split('.')[1];
           const profile = JSON.parse(atob(base64.replace(/-/g, '+').replace(/_/g, '/')));
-          // Ask user to confirm name and enter company
-          showProfileSetup(profile.name, profile.email, profile.picture, (name, company) => {
+          // Ask user to confirm name and enter designation + company
+          showProfileSetup(profile.name, profile.email, profile.picture, (name, designation, company) => {
             const user = {
               id: `google_${profile.sub}`,
               name: name,
+              designation: designation,
               company: company,
               email: profile.email,
               picture: profile.picture
@@ -748,11 +759,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Guest Sign In Button
   document.getElementById('btn-login-guest')?.addEventListener('click', () => {
-    showProfileSetup('', '', '', (name, company) => {
+    showProfileSetup('', '', '', (name, designation, company) => {
       const guestId = `guest_${Math.random().toString(36).substring(2, 11)}`;
       const user = {
         id: guestId,
         name: name,
+        designation: designation,
         company: company,
         email: 'guest@nova-construction.com',
         picture: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80'
