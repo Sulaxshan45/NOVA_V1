@@ -9,6 +9,7 @@ import { renderGantt } from './modules/gantt.js';
 import { renderBilling } from './modules/billing.js';
 import { renderDashboard } from './modules/dashboard.js';
 import { renderExpenses } from './modules/expenses.js';
+import { renderChat } from './modules/chat.js';
 import { getSettings, saveSettings, getProjects, saveProjects, getTasks, saveTasks, getMaterials, saveMaterials, exportAllData, importAllData, loadWorkspaceFromServer, clearLocalSessionCache } from './utils/storage.js';
 import { formatDate } from './utils/helpers.js';
 import { openModal, closeModal, showToast, showConfirm } from './utils/ui.js';
@@ -17,7 +18,8 @@ export { openModal, closeModal, showToast, showConfirm };
 // ============================================================
 // FIREBASE AUTHENTICATION
 // ============================================================
-import { auth, googleProvider, signInWithPopup, deleteUser, signOut } from './utils/firebase.js';
+import { auth, googleProvider, signInWithPopup, deleteUser, signOut, db } from './utils/firebase.js';
+import { collection, query, where, getDocs, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 // ============================================================
 // AUTH STATE & SESSION (localStorage-based — no server needed)
 // ============================================================
@@ -480,29 +482,7 @@ function renderProjectData() {
 // ============================================================
 // CHAT MODULE (placeholder)
 // ============================================================
-function renderChat() {
-  const container = document.getElementById('section-chat');
-  container.innerHTML = `
-    <div class="section-header">
-      <h2 class="section-title">💬 Team Chat</h2>
-      <span class="pill pill--yellow">Coming Soon</span>
-    </div>
-    <div class="glass-card" style="margin-top:24px;text-align:center;padding:60px 24px">
-      <div style="font-size:64px;margin-bottom:16px">💬</div>
-      <h3 style="font-size:20px;font-weight:700;margin-bottom:8px">Team Chat — Phase 2</h3>
-      <p style="color:var(--text-muted);max-width:400px;margin:0 auto">
-        Real-time team messaging, task mentions, and file sharing are planned for the next release.
-        Stay tuned!
-      </p>
-      <div style="margin-top:24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-        <div class="feature-chip">👥 Team mentions</div>
-        <div class="feature-chip">📎 File attachments</div>
-        <div class="feature-chip">🔔 Notifications</div>
-        <div class="feature-chip">🔍 Search messages</div>
-      </div>
-    </div>
-  `;
-}
+// Chat module is imported from ./modules/chat.js
 
 // ============================================================
 // PROFILE SETUP MODAL — shown on first login (guest or Google)
@@ -520,6 +500,11 @@ function showProfileSetup(prefillName, prefillEmail, prefillPicture, onComplete)
     <div class="form-group">
       <label class="form-label">Your Name <span style="color:var(--status-red)">*</span></label>
       <input id="setup-name" class="form-input" type="text" placeholder="e.g. John Doe" value="${prefillName || ''}" autocomplete="name" maxlength="60" />
+    </div>
+    <div class="form-group" style="margin-top:14px;">
+      <label class="form-label">Username (Letters and Numbers only) <span style="color:var(--status-red)">*</span></label>
+      <input id="setup-username" class="form-input" type="text" placeholder="e.g. johndoe123" autocomplete="username" maxlength="30" pattern="[a-zA-Z0-9]+" />
+      <div id="username-error" style="color:var(--status-red); font-size:12px; margin-top:4px; display:none;"></div>
     </div>
     <div class="form-group" style="margin-top:14px;">
       <label class="form-label">Job Title / Designation <span style="color:var(--status-red)">*</span></label>
@@ -641,45 +626,83 @@ function showProfileSetup(prefillName, prefillEmail, prefillPicture, onComplete)
       }
     });
 
-    const doSubmit = () => {
+    const doSubmit = async () => {
       const name = document.getElementById('setup-name')?.value.trim();
+      const username = document.getElementById('setup-username')?.value.trim();
       const designation = document.getElementById('setup-designation')?.value.trim();
       const company = document.getElementById('setup-company')?.value.trim();
+      const usernameError = document.getElementById('username-error');
       
       let hasError = false;
+      if (usernameError) usernameError.style.display = 'none';
 
       // Validate required fields
       if (!name) {
-        const inp = document.getElementById('setup-name');
-        inp.style.borderColor = 'var(--status-red)';
+        document.getElementById('setup-name').style.borderColor = 'var(--status-red)';
         hasError = true;
       } else {
         document.getElementById('setup-name').style.borderColor = '';
       }
 
+      if (!username || !/^[a-zA-Z0-9]+$/.test(username)) {
+        document.getElementById('setup-username').style.borderColor = 'var(--status-red)';
+        if (usernameError) {
+           usernameError.textContent = 'Username must be letters and numbers only.';
+           usernameError.style.display = 'block';
+        }
+        hasError = true;
+      } else {
+        document.getElementById('setup-username').style.borderColor = '';
+      }
+
       if (!designation) {
-        const sel = document.getElementById('setup-designation');
-        sel.style.borderColor = 'var(--status-red)';
+        document.getElementById('setup-designation').style.borderColor = 'var(--status-red)';
         hasError = true;
       } else {
         document.getElementById('setup-designation').style.borderColor = '';
       }
 
       if (!company) {
-        const inp = document.getElementById('setup-company');
-        inp.style.borderColor = 'var(--status-red)';
+        document.getElementById('setup-company').style.borderColor = 'var(--status-red)';
         hasError = true;
       } else {
         document.getElementById('setup-company').style.borderColor = '';
       }
 
       if (hasError) {
-        showToast('Please fill all required fields.', 'error');
+        showToast('Please fill all required fields correctly.', 'error');
         return;
       }
 
-      closeModal();
-      onComplete(name, designation, company, uploadedPictureBase64);
+      const btn = document.getElementById('setup-continue-btn');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = 'Checking...';
+      btn.disabled = true;
+
+      try {
+        // Check username uniqueness globally
+        const q = query(collection(db, 'users'), where('username', '==', username));
+        const qs = await getDocs(q);
+        
+        if (!qs.empty) {
+          document.getElementById('setup-username').style.borderColor = 'var(--status-red)';
+          if (usernameError) {
+             usernameError.textContent = 'Username is already taken. Please choose another.';
+             usernameError.style.display = 'block';
+          }
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+          return;
+        }
+
+        closeModal();
+        onComplete(name, username, designation, company, uploadedPictureBase64);
+      } catch (err) {
+        console.error('Firestore check error:', err);
+        showToast('Error verifying username. Check connection.', 'error');
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
     };
 
     document.getElementById('setup-continue-btn')?.addEventListener('click', doSubmit);
@@ -722,16 +745,25 @@ function handleFirebaseAuth(firebaseUser) {
     };
 
     closeModal();
-    showProfileSetup(profile.name, profile.email, profile.picture, (name, designation, company, picture) => {
+    showProfileSetup(profile.name, profile.email, profile.picture, async (name, username, designation, company, picture) => {
       const user = {
         id: `google_${profile.sub}`,
         name: name,
+        username: username,
         designation: designation,
         company: company,
         email: profile.email,
         picture: picture,
         firebaseUid: firebaseUser.uid
       };
+      
+      // Save to Firestore
+      try {
+        await setDoc(doc(db, 'users', user.id), user);
+      } catch (err) {
+        console.error("Error saving user to Firestore:", err);
+      }
+
       localStorage.setItem('nova_session_user', JSON.stringify(user));
       currentUser = user;
       showToast(`Welcome, ${user.name} ✓`, 'success');
@@ -823,16 +855,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Guest Sign In Button
   document.getElementById('btn-login-guest')?.addEventListener('click', () => {
-    showProfileSetup('', '', '', (name, designation, company, picture) => {
+    showProfileSetup('', '', '', async (name, username, designation, company, picture) => {
       const guestId = `guest_${Math.random().toString(36).substring(2, 11)}`;
       const user = {
         id: guestId,
         name: name,
+        username: username,
         designation: designation,
         company: company,
         email: 'guest@nova-construction.com',
         picture: picture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80'
       };
+
+      // Save to Firestore
+      try {
+        await setDoc(doc(db, 'users', user.id), user);
+      } catch (err) {
+        console.error("Error saving guest to Firestore:", err);
+      }
+
       localStorage.setItem('nova_session_user', JSON.stringify(user));
       currentUser = user;
       showToast(`Welcome, ${user.name} ✓`, 'success');
