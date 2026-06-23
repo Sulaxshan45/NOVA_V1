@@ -760,41 +760,42 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
     if (!window.google?.accounts?.id) {
-      showToast('Google Sign-In is still loading — please wait a moment and try again.', 'info');
+      showToast('Google Sign-In is still loading — please wait a second and try again.', 'info');
       return;
     }
     try {
       initGoogleAuth();
-      // Try One Tap first; if suppressed open modal with official Google button
-      google.accounts.id.prompt((notification) => {
-        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          // One Tap was blocked — show official Google button inside a modal
-          openModal('Sign in with Google', `
-            <div style="text-align:center;padding:12px 0 8px;">
-              <div style="font-size:40px;margin-bottom:12px;">🔑</div>
-              <p style="color:var(--text-muted);font-size:14px;margin-bottom:24px;line-height:1.6;">
-                Click the button below to sign in with your Google account.
-              </p>
-              <div id="google-official-btn" style="display:flex;justify-content:center;"></div>
-              <p style="color:var(--text-muted);font-size:12px;margin-top:16px;">
-                A secure Google popup will open to verify your identity.
-              </p>
-            </div>
-          `);
-          setTimeout(() => {
-            if (document.getElementById('google-official-btn')) {
-              google.accounts.id.renderButton(
-                document.getElementById('google-official-btn'),
-                { theme: 'outline', size: 'large', text: 'signin_with', width: 260 }
-              );
-            }
-          }, 150);
+      // Skip One Tap / FedCM entirely — go straight to official Google button popup
+      openModal('Sign in with Google', `
+        <div style="text-align:center;padding:16px 0 8px;">
+          <div style="font-size:44px;margin-bottom:14px;">🔑</div>
+          <p style="color:var(--text-muted);font-size:14px;margin-bottom:24px;line-height:1.6;">
+            Click the button below to securely sign in with your Google account.
+          </p>
+          <div id="google-official-btn" style="display:flex;justify-content:center;min-height:44px;"></div>
+          <p style="color:var(--text-muted);font-size:12px;margin-top:18px;opacity:0.7;">
+            🔒 A secure Google popup will open to verify your identity.
+          </p>
+        </div>
+      `);
+      // Small delay to let modal render before injecting the button
+      setTimeout(() => {
+        const container = document.getElementById('google-official-btn');
+        if (container && window.google?.accounts?.id) {
+          google.accounts.id.renderButton(container, {
+            theme: 'outline',
+            size: 'large',
+            text: 'signin_with',
+            shape: 'rectangular',
+            width: 280
+          });
         }
-      });
+      }, 120);
     } catch (err) {
       showToast('Google Sign-In error: ' + err.message, 'error');
     }
   });
+
 
   // Pre-initialize Google as soon as the script is ready (helps with One Tap timing)
   if (window.google?.accounts?.id) {
