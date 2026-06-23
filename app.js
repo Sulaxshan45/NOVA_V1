@@ -511,49 +511,180 @@ function renderChat() {
 function showProfileSetup(prefillName, prefillEmail, prefillPicture, onComplete) {
   const formHtml = `
     <div style="text-align:center;margin-bottom:24px;">
-      <div style="font-size:52px;margin-bottom:10px;">👤</div>
+      <div style="font-size:52px;margin-bottom:10px; position: relative; display: inline-block;">
+        <img id="setup-preview-img" src="${prefillPicture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80'}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-purple);">
+        <label for="setup-picture" style="position: absolute; bottom: 0; right: -10px; background: var(--accent-purple); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">📷</label>
+        <input type="file" id="setup-picture" accept="image/*" style="display: none;">
+      </div>
       <p style="color:var(--text-muted);font-size:14px;line-height:1.6;">Tell us about yourself to personalise your NOVA workspace</p>
     </div>
     <div class="form-group">
-      <label class="form-label">Your Name <span style="color:var(--danger)">*</span></label>
+      <label class="form-label">Your Name <span style="color:var(--status-red)">*</span></label>
       <input id="setup-name" class="form-input" type="text" placeholder="e.g. Sulaxshan Kumar" value="${prefillName || ''}" autocomplete="name" maxlength="60" />
     </div>
     <div class="form-group" style="margin-top:14px;">
-      <label class="form-label">Job Title / Designation</label>
-      <input id="setup-designation" class="form-input" type="text" placeholder="e.g. Project Manager, Site Engineer, Owner" maxlength="80" />
+      <label class="form-label">Job Title / Designation <span style="color:var(--status-red)">*</span></label>
+      <select id="setup-designation" class="form-input">
+        <option value="" disabled selected>Select your designation...</option>
+        <optgroup label="Management">
+          <option value="Project Director">Project Director</option>
+          <option value="Construction Manager">Construction Manager</option>
+          <option value="Project Manager">Project Manager</option>
+          <option value="Site Manager">Site Manager</option>
+          <option value="Contracts Manager">Contracts Manager</option>
+        </optgroup>
+        <optgroup label="Engineering">
+          <option value="Civil Engineer">Civil Engineer</option>
+          <option value="Site Engineer">Site Engineer</option>
+          <option value="Project Engineer">Project Engineer</option>
+          <option value="Resident Engineer">Resident Engineer</option>
+          <option value="Structural Engineer">Structural Engineer</option>
+          <option value="Geotechnical Engineer">Geotechnical Engineer</option>
+          <option value="Highway Engineer">Highway Engineer</option>
+          <option value="Water Resources Engineer">Water Resources Engineer</option>
+        </optgroup>
+        <optgroup label="MEP Engineer">
+          <option value="Electrical Engineer">Electrical Engineer</option>
+          <option value="Mechanical Engineer">Mechanical Engineer</option>
+          <option value="Planning Engineer">Planning Engineer</option>
+        </optgroup>
+        <optgroup label="Quantity Surveying & Cost Control">
+          <option value="Quantity Surveyor">Quantity Surveyor</option>
+          <option value="Senior Quantity Surveyor">Senior Quantity Surveyor</option>
+          <option value="Cost Engineer">Cost Engineer</option>
+          <option value="Estimator">Estimator</option>
+        </optgroup>
+        <optgroup label="Quality & Safety">
+          <option value="Quality Assurance Engineer">Quality Assurance Engineer</option>
+          <option value="Quality Control Engineer">Quality Control Engineer</option>
+          <option value="Safety Officer">Safety Officer</option>
+          <option value="HSE Engineer">HSE Engineer</option>
+          <option value="HSE Manager">HSE Manager</option>
+        </optgroup>
+        <optgroup label="Surveying">
+          <option value="Land Surveyor">Land Surveyor</option>
+          <option value="Site Surveyor">Site Surveyor</option>
+          <option value="GIS Specialist">GIS Specialist</option>
+        </optgroup>
+        <optgroup label="Supervision">
+          <option value="Site Supervisor">Site Supervisor</option>
+          <option value="General Foreman">General Foreman</option>
+          <option value="Foreman">Foreman</option>
+          <option value="Clerk of Works">Clerk of Works</option>
+        </optgroup>
+        <optgroup label="Administration & Support">
+          <option value="Document Controller">Document Controller</option>
+          <option value="Site Administrator">Site Administrator</option>
+          <option value="Procurement Officer">Procurement Officer</option>
+          <option value="Store Keeper">Store Keeper</option>
+          <option value="Logistics Coordinator">Logistics Coordinator</option>
+        </optgroup>
+        <optgroup label="Skilled Trades">
+          <option value="Mason">Mason</option>
+          <option value="Carpenter">Carpenter</option>
+          <option value="Steel Fixer">Steel Fixer</option>
+          <option value="Welder">Welder</option>
+          <option value="Electrician">Electrician</option>
+          <option value="Plumber">Plumber</option>
+          <option value="Painter">Painter</option>
+          <option value="Tiler">Tiler</option>
+          <option value="Scaffolder">Scaffolder</option>
+          <option value="Rigger">Rigger</option>
+        </optgroup>
+        <optgroup label="Equipment & Plant">
+          <option value="Heavy Equipment Operator">Heavy Equipment Operator</option>
+          <option value="Crane Operator">Crane Operator</option>
+          <option value="Excavator Operator">Excavator Operator</option>
+          <option value="Plant Mechanic">Plant Mechanic</option>
+        </optgroup>
+        <optgroup label="Entry-Level Positions">
+          <option value="Graduate Engineer Trainee">Graduate Engineer Trainee</option>
+          <option value="Assistant Site Engineer">Assistant Site Engineer</option>
+          <option value="Junior Quantity Surveyor">Junior Quantity Surveyor</option>
+          <option value="Engineering Intern">Engineering Intern</option>
+          <option value="Site Technician">Site Technician</option>
+        </optgroup>
+        <optgroup label="Labor Positions">
+          <option value="Construction Worker">Construction Worker</option>
+          <option value="General Laborer">General Laborer</option>
+          <option value="Helper">Helper</option>
+        </optgroup>
+      </select>
     </div>
     <div class="form-group" style="margin-top:14px;">
-      <label class="form-label">Company / Organization</label>
+      <label class="form-label">Company / Organization <span style="color:var(--status-red)">*</span></label>
       <input id="setup-company" class="form-input" type="text" placeholder="e.g. ABC Construction Pvt. Ltd." autocomplete="organization" maxlength="80" />
     </div>
     <button class="btn btn-primary" id="setup-continue-btn" style="margin-top:20px;width:100%;padding:14px;font-size:15px;">
       ✓ &nbsp;Continue to NOVA
     </button>
   `;
-  openModal('Set Up Your Profile', formHtml);
+  openModal('Set Up Your Profile', formHtml, { persistent: true });
 
   setTimeout(() => {
     const nameInput = document.getElementById('setup-name');
     if (nameInput) nameInput.focus();
 
+    let uploadedPictureBase64 = prefillPicture;
+
+    // Handle profile picture upload
+    const pictureInput = document.getElementById('setup-picture');
+    const previewImg = document.getElementById('setup-preview-img');
+    pictureInput?.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          uploadedPictureBase64 = ev.target.result;
+          previewImg.src = uploadedPictureBase64;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
     const doSubmit = () => {
       const name = document.getElementById('setup-name')?.value.trim();
       const designation = document.getElementById('setup-designation')?.value.trim();
       const company = document.getElementById('setup-company')?.value.trim();
+      
+      let hasError = false;
+
+      // Validate required fields
       if (!name) {
         const inp = document.getElementById('setup-name');
-        inp.style.borderColor = 'var(--danger)';
-        inp.placeholder = 'Name is required!';
-        inp.focus();
+        inp.style.borderColor = 'var(--status-red)';
+        hasError = true;
+      } else {
+        document.getElementById('setup-name').style.borderColor = '';
+      }
+
+      if (!designation) {
+        const sel = document.getElementById('setup-designation');
+        sel.style.borderColor = 'var(--status-red)';
+        hasError = true;
+      } else {
+        document.getElementById('setup-designation').style.borderColor = '';
+      }
+
+      if (!company) {
+        const inp = document.getElementById('setup-company');
+        inp.style.borderColor = 'var(--status-red)';
+        hasError = true;
+      } else {
+        document.getElementById('setup-company').style.borderColor = '';
+      }
+
+      if (hasError) {
+        showToast('Please fill all required fields.', 'error');
         return;
       }
+
       closeModal();
-      onComplete(name, designation || '', company || '');
+      onComplete(name, designation, company, uploadedPictureBase64);
     };
 
     document.getElementById('setup-continue-btn')?.addEventListener('click', doSubmit);
     document.getElementById('setup-name')?.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('setup-designation')?.focus(); });
-    document.getElementById('setup-designation')?.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('setup-company')?.focus(); });
     document.getElementById('setup-company')?.addEventListener('keydown', e => { if (e.key === 'Enter') doSubmit(); });
   }, 50);
 }
@@ -588,14 +719,14 @@ function handleGoogleCredential(response) {
     const profile = JSON.parse(atob(base64.replace(/-/g, '+').replace(/_/g, '/')));
     // Close any open modal (the fallback Google button modal)
     closeModal();
-    showProfileSetup(profile.name, profile.email, profile.picture, (name, designation, company) => {
+    showProfileSetup(profile.name, profile.email, profile.picture, (name, designation, company, picture) => {
       const user = {
         id: `google_${profile.sub}`,
         name: name,
         designation: designation,
         company: company,
         email: profile.email,
-        picture: profile.picture
+        picture: picture
       };
       localStorage.setItem('nova_session_user', JSON.stringify(user));
       currentUser = user;
@@ -745,7 +876,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Guest Sign In Button
   document.getElementById('btn-login-guest')?.addEventListener('click', () => {
-    showProfileSetup('', '', '', (name, designation, company) => {
+    showProfileSetup('', '', '', (name, designation, company, picture) => {
       const guestId = `guest_${Math.random().toString(36).substring(2, 11)}`;
       const user = {
         id: guestId,
@@ -753,7 +884,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         designation: designation,
         company: company,
         email: 'guest@nova-construction.com',
-        picture: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80'
+        picture: picture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80'
       };
       localStorage.setItem('nova_session_user', JSON.stringify(user));
       currentUser = user;
@@ -773,11 +904,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Delete Account Button Handler
   document.getElementById('btn-delete-account')?.addEventListener('click', () => {
     userDropdown?.classList.remove('user-dropdown--active');
-    showConfirm('This will permanently delete your account and wipe all your data from this device. Are you sure?', () => {
+    showConfirm('This will wipe your data from this device and prepare a deletion request email. Proceed?', () => {
+      // 1. Prepare an email to the admin for account deletion (since there is no backend server)
+      const email = 'support@nova-construction.com';
+      const subject = encodeURIComponent('Account Deletion Request - NOVA');
+      const body = encodeURIComponent(`Hello,\n\nPlease delete my account from NOVA.\n\nUser Details:\nName: ${currentUser?.name}\nEmail: ${currentUser?.email}\nID: ${currentUser?.id}\n\nThank you.`);
+      window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+
+      // 2. Wipe the local data immediately to protect privacy
       clearLocalSessionCache();
       localStorage.removeItem('nova_session_user');
       currentUser = null;
-      showToast('Account and all data deleted', 'info');
+      showToast('Local data wiped. Please send the email to complete account deletion.', 'info');
       checkAuthSession();
     });
   });

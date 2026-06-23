@@ -13,15 +13,21 @@ function escapeKey(e) {
   if (e.key === 'Escape') closeModal();
 }
 
-export function openModal(title, contentHtml) {
+export function openModal(title, contentHtml, options = {}) {
   const overlay = document.getElementById('modal-overlay');
   const modalTitle = document.getElementById('modal-title');
   const modalBody = document.getElementById('modal-body');
   modalTitle.textContent = title;
   modalBody.innerHTML = contentHtml;
   overlay.classList.add('modal-overlay--active');
-  overlay.addEventListener('click', outsideClick);
-  document.addEventListener('keydown', escapeKey);
+  
+  if (!options.persistent) {
+    overlay.addEventListener('click', outsideClick);
+    document.addEventListener('keydown', escapeKey);
+  } else {
+    overlay.removeEventListener('click', outsideClick);
+    document.removeEventListener('keydown', escapeKey);
+  }
 }
 
 export function closeModal() {
