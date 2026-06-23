@@ -713,6 +713,32 @@ function showProfileSetup(prefillName, prefillEmail, prefillPicture, onComplete)
 
 
 // ============================================================
+// THEME TOGGLE
+// ============================================================
+function setupThemeToggle() {
+  const btn = document.getElementById('theme-toggle-btn');
+  const icon = document.getElementById('theme-toggle-icon');
+  if (!btn) return;
+
+  const currentTheme = localStorage.getItem('nova_theme') || 'dark';
+  if (currentTheme === 'light') {
+    document.body.classList.add('theme-light');
+    if(icon) icon.textContent = '☀️';
+  }
+
+  btn.addEventListener('click', () => {
+    document.body.classList.toggle('theme-light');
+    if (document.body.classList.contains('theme-light')) {
+      localStorage.setItem('nova_theme', 'light');
+      if(icon) icon.textContent = '☀️';
+    } else {
+      localStorage.setItem('nova_theme', 'dark');
+      if(icon) icon.textContent = '🌙';
+    }
+  });
+}
+
+// ============================================================
 // SIDEBAR TOGGLE (mobile)
 // ============================================================
 function setupSidebar() {
@@ -841,6 +867,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (userDropdown?.classList.contains('user-dropdown--active')) {
       userDropdown.classList.remove('user-dropdown--active');
     }
+  });
+
+  // Logout
+  document.getElementById('btn-logout')?.addEventListener('click', async () => {
+    try {
+      if (auth.currentUser) await signOut(auth);
+    } catch(e) {}
+    localStorage.removeItem('nova_session_user');
+    currentUser = null;
+    document.getElementById('app-shell').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('user-dropdown')?.classList.remove('user-dropdown--active');
+  });
+
+  // Delete Account
+  document.getElementById('btn-delete-account')?.addEventListener('click', () => {
+    showConfirm('Delete Account', 'Are you sure you want to delete your account? This cannot be undone.', async (confirmed) => {
+      if (!confirmed) return;
+      try {
+        if (auth.currentUser) {
+           await deleteUser(auth.currentUser);
+        }
+        localStorage.removeItem('nova_session_user');
+        currentUser = null;
+        document.getElementById('app-shell').style.display = 'none';
+        document.getElementById('login-screen').style.display = 'flex';
+        document.getElementById('user-dropdown')?.classList.remove('user-dropdown--active');
+        showToast('Account deleted successfully', 'success');
+      } catch (err) {
+        showToast('Error deleting account: ' + err.message, 'error');
+      }
+    });
   });
 
   // Firebase Google Sign-In
