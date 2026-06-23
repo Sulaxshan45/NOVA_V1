@@ -57,7 +57,7 @@ function updateSidebarUser() {
   const companyEl = document.getElementById('topbar-company');
 
   if (currentUser && topbarUser) {
-    topbarUser.style.display = 'inline-block';
+    topbarUser.style.display = 'flex';
     if (avatarEl) avatarEl.src = currentUser.picture || 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&h=150&q=80';
     if (nameEl) nameEl.textContent = currentUser.name || 'User';
     if (emailEl) emailEl.textContent = currentUser.email || '';
@@ -832,16 +832,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   const userBtn = document.getElementById('topbar-user-btn');
   const userDropdown = document.getElementById('user-dropdown');
 
-  userBtn?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    userDropdown?.classList.toggle('user-dropdown--active');
-  });
+  // bulletproof profile dropdown
+  if (userBtn && userDropdown) {
+    userBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = userDropdown.classList.contains('user-dropdown--active');
+      if (isOpen) {
+        userDropdown.classList.remove('user-dropdown--active');
+      } else {
+        userDropdown.classList.add('user-dropdown--active');
+      }
+    });
 
-  window.addEventListener('click', () => {
-    if (userDropdown?.classList.contains('user-dropdown--active')) {
-      userDropdown.classList.remove('user-dropdown--active');
-    }
-  });
+    document.addEventListener('click', (e) => {
+      if (!userBtn.contains(e.target) && !userDropdown.contains(e.target)) {
+        userDropdown.classList.remove('user-dropdown--active');
+      }
+    });
+  }
 
   // Logout
   document.getElementById('btn-logout')?.addEventListener('click', async () => {

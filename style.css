@@ -303,6 +303,7 @@ body.project-active .nav-project-group {
   position: sticky;
   top: 0;
   z-index: 50;
+  overflow: visible;
 }
 
 .topbar-toggle {
