@@ -51,12 +51,21 @@ function updateSidebarUser() {
   const avatarEl = document.getElementById('topbar-avatar');
   const nameEl = document.getElementById('topbar-username');
   const emailEl = document.getElementById('topbar-email');
+  const companyEl = document.getElementById('topbar-company');
 
   if (currentUser && topbarUser) {
     topbarUser.style.display = 'inline-block';
     if (avatarEl) avatarEl.src = currentUser.picture || 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&h=150&q=80';
     if (nameEl) nameEl.textContent = currentUser.name || 'User';
     if (emailEl) emailEl.textContent = currentUser.email || '';
+    if (companyEl) {
+      if (currentUser.company) {
+        companyEl.textContent = '🏢 ' + currentUser.company;
+        companyEl.style.display = '';
+      } else {
+        companyEl.style.display = 'none';
+      }
+    }
   } else if (topbarUser) {
     topbarUser.style.display = 'none';
   }
@@ -559,6 +568,53 @@ function renderChat() {
 }
 
 // ============================================================
+// PROFILE SETUP MODAL — shown on first login (guest or Google)
+// ============================================================
+function showProfileSetup(prefillName, prefillEmail, prefillPicture, onComplete) {
+  const formHtml = `
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:52px;margin-bottom:10px;">👤</div>
+      <p style="color:var(--text-muted);font-size:14px;line-height:1.6;">Tell us about yourself to personalise your NOVA workspace</p>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Your Name <span style="color:var(--danger)">*</span></label>
+      <input id="setup-name" class="form-input" type="text" placeholder="e.g. Sulaxshan Kumar" value="${prefillName || ''}" autocomplete="name" maxlength="60" />
+    </div>
+    <div class="form-group" style="margin-top:14px;">
+      <label class="form-label">Company / Organization</label>
+      <input id="setup-company" class="form-input" type="text" placeholder="e.g. ABC Construction Pvt. Ltd." autocomplete="organization" maxlength="80" />
+    </div>
+    <button class="btn btn-primary" id="setup-continue-btn" style="margin-top:20px;width:100%;padding:14px;font-size:15px;">
+      ✓ &nbsp;Continue to NOVA
+    </button>
+  `;
+  openModal('Set Up Your Profile', formHtml);
+
+  setTimeout(() => {
+    const nameInput = document.getElementById('setup-name');
+    if (nameInput) nameInput.focus();
+
+    const doSubmit = () => {
+      const name = document.getElementById('setup-name')?.value.trim();
+      const company = document.getElementById('setup-company')?.value.trim();
+      if (!name) {
+        const inp = document.getElementById('setup-name');
+        inp.style.borderColor = 'var(--danger)';
+        inp.placeholder = 'Name is required!';
+        inp.focus();
+        return;
+      }
+      closeModal();
+      onComplete(name, company || '');
+    };
+
+    document.getElementById('setup-continue-btn')?.addEventListener('click', doSubmit);
+    document.getElementById('setup-company')?.addEventListener('keydown', e => { if (e.key === 'Enter') doSubmit(); });
+    document.getElementById('setup-name')?.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('setup-company')?.focus(); });
+  }, 50);
+}
+
+// ============================================================
 // SIDEBAR TOGGLE (mobile)
 // ============================================================
 function setupSidebar() {
@@ -651,24 +707,28 @@ document.addEventListener('DOMContentLoaded', async () => {
           // Decode the JWT credential returned by Google
           const base64 = response.credential.split('.')[1];
           const profile = JSON.parse(atob(base64.replace(/-/g, '+').replace(/_/g, '/')));
-          const user = {
-            id: `google_${profile.sub}`,
-            name: profile.name,
-            email: profile.email,
-            picture: profile.picture
-          };
-          localStorage.setItem('nova_session_user', JSON.stringify(user));
-          currentUser = user;
-          showToast(`Welcome, ${user.name} ✓`, 'success');
-          updateSidebarUser();
-          const loginScr = document.getElementById('login-screen');
-          const appSh = document.getElementById('app-shell');
-          if (loginScr) loginScr.style.display = 'none';
-          if (appSh) appSh.style.display = 'flex';
-          initProjects();
-          const project = getActiveProject();
-          updateNavVisibility();
-          window.navigateTo(project ? 'dashboard' : 'projects');
+          // Ask user to confirm name and enter company
+          showProfileSetup(profile.name, profile.email, profile.picture, (name, company) => {
+            const user = {
+              id: `google_${profile.sub}`,
+              name: name,
+              company: company,
+              email: profile.email,
+              picture: profile.picture
+            };
+            localStorage.setItem('nova_session_user', JSON.stringify(user));
+            currentUser = user;
+            showToast(`Welcome, ${user.name} ✓`, 'success');
+            updateSidebarUser();
+            const loginScr = document.getElementById('login-screen');
+            const appSh = document.getElementById('app-shell');
+            if (loginScr) loginScr.style.display = 'none';
+            if (appSh) appSh.style.display = 'flex';
+            initProjects();
+            const project = getActiveProject();
+            updateNavVisibility();
+            window.navigateTo(project ? 'dashboard' : 'projects');
+          });
         },
         use_fedcm_for_prompt: true
       });
@@ -688,25 +748,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Guest Sign In Button
   document.getElementById('btn-login-guest')?.addEventListener('click', () => {
-    const guestId = `guest_${Math.random().toString(36).substring(2, 11)}`;
-    const user = {
-      id: guestId,
-      name: 'Guest User',
-      email: 'guest@nova-construction.com',
-      picture: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80'
-    };
-    localStorage.setItem('nova_session_user', JSON.stringify(user));
-    currentUser = user;
-    showToast('Logged in as Guest User ✓', 'success');
-    updateSidebarUser();
-    const loginScr = document.getElementById('login-screen');
-    const appSh = document.getElementById('app-shell');
-    if (loginScr) loginScr.style.display = 'none';
-    if (appSh) appSh.style.display = 'flex';
-    initProjects();
-    const project = getActiveProject();
-    updateNavVisibility();
-    window.navigateTo(project ? 'dashboard' : 'projects');
+    showProfileSetup('', '', '', (name, company) => {
+      const guestId = `guest_${Math.random().toString(36).substring(2, 11)}`;
+      const user = {
+        id: guestId,
+        name: name,
+        company: company,
+        email: 'guest@nova-construction.com',
+        picture: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80'
+      };
+      localStorage.setItem('nova_session_user', JSON.stringify(user));
+      currentUser = user;
+      showToast(`Welcome, ${user.name} ✓`, 'success');
+      updateSidebarUser();
+      const loginScr = document.getElementById('login-screen');
+      const appSh = document.getElementById('app-shell');
+      if (loginScr) loginScr.style.display = 'none';
+      if (appSh) appSh.style.display = 'flex';
+      initProjects();
+      const project = getActiveProject();
+      updateNavVisibility();
+      window.navigateTo(project ? 'dashboard' : 'projects');
+    });
   });
 
   // Delete Account Button Handler
