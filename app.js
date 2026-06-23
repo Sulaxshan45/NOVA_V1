@@ -713,32 +713,6 @@ function showProfileSetup(prefillName, prefillEmail, prefillPicture, onComplete)
 
 
 // ============================================================
-// THEME TOGGLE
-// ============================================================
-function setupThemeToggle() {
-  const btn = document.getElementById('theme-toggle-btn');
-  const icon = document.getElementById('theme-toggle-icon');
-  if (!btn) return;
-
-  const currentTheme = localStorage.getItem('nova_theme') || 'dark';
-  if (currentTheme === 'light') {
-    document.body.classList.add('theme-light');
-    if(icon) icon.textContent = '☀️';
-  }
-
-  btn.addEventListener('click', () => {
-    document.body.classList.toggle('theme-light');
-    if (document.body.classList.contains('theme-light')) {
-      localStorage.setItem('nova_theme', 'light');
-      if(icon) icon.textContent = '☀️';
-    } else {
-      localStorage.setItem('nova_theme', 'dark');
-      if(icon) icon.textContent = '🌙';
-    }
-  });
-}
-
-// ============================================================
 // SIDEBAR TOGGLE (mobile)
 // ============================================================
 function setupSidebar() {
