@@ -15,7 +15,7 @@ import { formatDate } from './utils/helpers.js';
 // ============================================================
 // GOOGLE CLIENT ID — set this to your Google OAuth Client ID
 // ============================================================
-const GOOGLE_CLIENT_ID = ''; // <-- PASTE YOUR CLIENT ID HERE
+const GOOGLE_CLIENT_ID = '341328479224-m81dbansj3tbbruvasn9l1tcqml2qnbs.apps.googleusercontent.com';
 
 // ============================================================
 // AUTH STATE & SESSION (localStorage-based — no server needed)
