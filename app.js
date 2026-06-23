@@ -643,6 +643,55 @@ function setupSidebar() {
 }
 
 // ============================================================
+// GOOGLE AUTH HELPERS (initialized once on page load)
+// ============================================================
+let _googleInited = false;
+
+function handleGoogleCredential(response) {
+  try {
+    const base64 = response.credential.split('.')[1];
+    const profile = JSON.parse(atob(base64.replace(/-/g, '+').replace(/_/g, '/')));
+    // Close any open modal (the fallback Google button modal)
+    closeModal();
+    showProfileSetup(profile.name, profile.email, profile.picture, (name, designation, company) => {
+      const user = {
+        id: `google_${profile.sub}`,
+        name: name,
+        designation: designation,
+        company: company,
+        email: profile.email,
+        picture: profile.picture
+      };
+      localStorage.setItem('nova_session_user', JSON.stringify(user));
+      currentUser = user;
+      showToast(`Welcome, ${user.name} ✓`, 'success');
+      updateSidebarUser();
+      const loginScr = document.getElementById('login-screen');
+      const appSh = document.getElementById('app-shell');
+      if (loginScr) loginScr.style.display = 'none';
+      if (appSh) appSh.style.display = 'flex';
+      initProjects();
+      updateNavVisibility();
+      window.navigateTo(getActiveProject() ? 'dashboard' : 'projects');
+    });
+  } catch (err) {
+    showToast('Google credential error: ' + err.message, 'error');
+  }
+}
+
+function initGoogleAuth() {
+  if (_googleInited || !GOOGLE_CLIENT_ID || !window.google?.accounts?.id) return;
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: handleGoogleCredential,
+    auto_select: false,
+    cancel_on_tap_outside: true,
+    use_fedcm_for_prompt: false // FedCM silently blocks on most browsers
+  });
+  _googleInited = true;
+}
+
+// ============================================================
 // INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
@@ -704,58 +753,59 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Google Sign-In (client-side GSI popup — works on GitHub Pages)
+  // Google Sign-In (client-side GSI — works on GitHub Pages)
   document.getElementById('btn-login-google')?.addEventListener('click', () => {
     if (!GOOGLE_CLIENT_ID) {
-      showToast('Google Client ID not configured. Use Guest login or set GOOGLE_CLIENT_ID in app.js', 'error');
+      showToast('Google Client ID not configured. Use Guest login.', 'error');
+      return;
+    }
+    if (!window.google?.accounts?.id) {
+      showToast('Google Sign-In is still loading — please wait a moment and try again.', 'info');
       return;
     }
     try {
-      google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: (response) => {
-          // Decode the JWT credential returned by Google
-          const base64 = response.credential.split('.')[1];
-          const profile = JSON.parse(atob(base64.replace(/-/g, '+').replace(/_/g, '/')));
-          // Ask user to confirm name and enter designation + company
-          showProfileSetup(profile.name, profile.email, profile.picture, (name, designation, company) => {
-            const user = {
-              id: `google_${profile.sub}`,
-              name: name,
-              designation: designation,
-              company: company,
-              email: profile.email,
-              picture: profile.picture
-            };
-            localStorage.setItem('nova_session_user', JSON.stringify(user));
-            currentUser = user;
-            showToast(`Welcome, ${user.name} ✓`, 'success');
-            updateSidebarUser();
-            const loginScr = document.getElementById('login-screen');
-            const appSh = document.getElementById('app-shell');
-            if (loginScr) loginScr.style.display = 'none';
-            if (appSh) appSh.style.display = 'flex';
-            initProjects();
-            const project = getActiveProject();
-            updateNavVisibility();
-            window.navigateTo(project ? 'dashboard' : 'projects');
-          });
-        },
-        use_fedcm_for_prompt: true
-      });
+      initGoogleAuth();
+      // Try One Tap first; if suppressed open modal with official Google button
       google.accounts.id.prompt((notification) => {
         if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          // Fallback: open popup
-          google.accounts.id.renderButton(
-            document.getElementById('btn-login-google'),
-            { type: 'standard', theme: 'outline', size: 'large' }
-          );
+          // One Tap was blocked — show official Google button inside a modal
+          openModal('Sign in with Google', `
+            <div style="text-align:center;padding:12px 0 8px;">
+              <div style="font-size:40px;margin-bottom:12px;">🔑</div>
+              <p style="color:var(--text-muted);font-size:14px;margin-bottom:24px;line-height:1.6;">
+                Click the button below to sign in with your Google account.
+              </p>
+              <div id="google-official-btn" style="display:flex;justify-content:center;"></div>
+              <p style="color:var(--text-muted);font-size:12px;margin-top:16px;">
+                A secure Google popup will open to verify your identity.
+              </p>
+            </div>
+          `);
+          setTimeout(() => {
+            if (document.getElementById('google-official-btn')) {
+              google.accounts.id.renderButton(
+                document.getElementById('google-official-btn'),
+                { theme: 'outline', size: 'large', text: 'signin_with', width: 260 }
+              );
+            }
+          }, 150);
         }
       });
     } catch (err) {
-      showToast('Google Sign-In failed: ' + err.message, 'error');
+      showToast('Google Sign-In error: ' + err.message, 'error');
     }
   });
+
+  // Pre-initialize Google as soon as the script is ready (helps with One Tap timing)
+  if (window.google?.accounts?.id) {
+    initGoogleAuth();
+  } else {
+    // Wait for the async Google script to load
+    const gsiScript = document.querySelector('script[src*="accounts.google.com/gsi"]');
+    if (gsiScript) {
+      gsiScript.addEventListener('load', initGoogleAuth);
+    }
+  }
 
   // Guest Sign In Button
   document.getElementById('btn-login-guest')?.addEventListener('click', () => {
