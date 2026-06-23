@@ -1,4 +1,5 @@
 # Node
+node_modules/
 netlify/functions/node_modules/
 
 # Environment Variables — NEVER commit these
