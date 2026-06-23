@@ -848,33 +848,77 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
+  // ============================================================
+  // EMAILJS CONFIGURATION
+  // ============================================================
+  const EMAILJS_SERVICE_ID = 'service_vleyg5b';
+  const EMAILJS_TEMPLATE_ID = 'template_mx85zt9';
+  const EMAILJS_PUBLIC_KEY = 'CES5n8wtVaFXM5HYQ';
+
+  // Process Account Deletion Link from Email
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('delete_user')) {
+    const userIdToDelete = urlParams.get('delete_user');
+    // We must ensure the user is logged in and matches the ID
+    if (currentUser && currentUser.id === userIdToDelete) {
+      showConfirm('Final Confirmation: Delete this account permanently?', async () => {
+        try {
+          if (auth.currentUser) {
+            await deleteUser(auth.currentUser);
+          }
+          clearLocalSessionCache();
+          localStorage.removeItem('nova_session_user');
+          currentUser = null;
+          showToast('Account successfully deleted.', 'success');
+          // Clean the URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+          setTimeout(() => window.location.reload(), 1500);
+        } catch (err) {
+          if (err.code === 'auth/requires-recent-login') {
+            showToast('Security required: Please log out, log back in, and click the link again.', 'error');
+          } else {
+            showToast('Failed to delete account: ' + err.message, 'error');
+          }
+        }
+      });
+    } else {
+      showToast('Deletion failed: You must be logged into the account you are trying to delete.', 'error');
+    }
+  }
+
   // Delete Account Button Handler
   document.getElementById('btn-delete-account')?.addEventListener('click', () => {
     userDropdown?.classList.remove('user-dropdown--active');
-    showConfirm('This will wipe your data and delete your account identity from our servers. Proceed?', async () => {
-      try {
-        if (auth.currentUser) {
-          await deleteUser(auth.currentUser);
-        }
-        
-        // 1. Prepare an email to the admin for account deletion record
-        const email = 'support@nova-construction.com';
-        const subject = encodeURIComponent('Account Deletion Confirmation - NOVA');
-        const body = encodeURIComponent(`Hello,\n\nI have deleted my account from NOVA.\n\nUser Details:\nName: ${currentUser?.name}\nEmail: ${currentUser?.email}\nID: ${currentUser?.id}\n\nThank you.`);
-        window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
-
-        // 2. Wipe the local data immediately
+    
+    // Guest users cannot use email deletion
+    if (currentUser?.id.startsWith('guest_')) {
+      showConfirm('Guest accounts are not linked to an email. Delete local data?', () => {
         clearLocalSessionCache();
         localStorage.removeItem('nova_session_user');
         currentUser = null;
-        showToast('Account successfully deleted from server and local device.', 'success');
+        showToast('Guest data wiped.', 'info');
         checkAuthSession();
+      });
+      return;
+    }
+
+    showConfirm('We will send a confirmation link to your email. You must click it to delete your account. Proceed?', async () => {
+      // Generate the secure deletion link
+      const deleteLink = `${window.location.origin}${window.location.pathname}?delete_user=${currentUser.id}`;
+
+      const templateParams = {
+        name: currentUser.name,
+        user_email: currentUser.email,
+        delete_link: deleteLink
+      };
+
+      try {
+        emailjs.init(EMAILJS_PUBLIC_KEY);
+        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams);
+        showToast('Deletion email sent! Please check your inbox.', 'success');
       } catch (err) {
-        if (err.code === 'auth/requires-recent-login') {
-          showToast('Security required: Please log out, log back in, and try deleting again.', 'error');
-        } else {
-          showToast('Failed to delete account from server: ' + err.message, 'error');
-        }
+        showToast('Failed to send email. Please try again later.', 'error');
+        console.error('EmailJS Error:', err);
       }
     });
   });
