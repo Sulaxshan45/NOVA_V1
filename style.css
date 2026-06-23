@@ -883,8 +883,11 @@ body.project-active .nav-project-group {
   padding-right: 32px;
 }
 
-.form-select option {
-  background: #1a1a2e;
+.form-select option,
+.form-input option,
+.form-input optgroup {
+  background: var(--bg-surface);
+  color: var(--text-primary);
 }
 
 .form-textarea {

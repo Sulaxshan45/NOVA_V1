@@ -524,7 +524,7 @@ function showProfileSetup(prefillName, prefillEmail, prefillPicture, onComplete)
     </div>
     <div class="form-group" style="margin-top:14px;">
       <label class="form-label">Job Title / Designation <span style="color:var(--status-red)">*</span></label>
-      <select id="setup-designation" class="form-input">
+      <select id="setup-designation" class="form-input form-select">
         <option value="" disabled selected>Select your designation...</option>
         <optgroup label="Management">
           <option value="Project Director">Project Director</option>
