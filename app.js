@@ -18,7 +18,7 @@ export { openModal, closeModal, showToast, showConfirm };
 // ============================================================
 // FIREBASE AUTHENTICATION
 // ============================================================
-import { auth, googleProvider, signInWithPopup, deleteUser, signOut, db } from './utils/firebase.js';
+import { auth, googleProvider, signInWithRedirect, getRedirectResult, deleteUser, signOut, db } from './utils/firebase.js';
 import { collection, query, where, getDocs, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 // ============================================================
 // AUTH STATE & SESSION (localStorage-based — no server needed)
@@ -791,6 +791,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Check localStorage session (no server needed)
   const isLoggedIn = checkAuthSession();
 
+  // Handle Google redirect result (after signInWithRedirect returns)
+  try {
+    const result = await getRedirectResult(auth);
+    if (result && result.user) {
+      handleFirebaseAuth(result.user);
+    }
+  } catch (err) {
+    console.warn('Redirect result error:', err.message);
+  }
+
   // If already logged in (session restored), initialize app state
   if (isLoggedIn) {
     initProjects();
@@ -892,13 +902,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  // Firebase Google Sign-In
+  // Firebase Google Sign-In (use redirect — popup is blocked by GitHub Pages COOP headers)
   document.getElementById('btn-login-google')?.addEventListener('click', async () => {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      handleFirebaseAuth(result.user);
+      showToast('Redirecting to Google...', 'info');
+      await signInWithRedirect(auth, googleProvider);
     } catch (error) {
-      showToast('Login cancelled or failed: ' + error.message, 'error');
+      showToast('Login failed: ' + error.message, 'error');
     }
   });
 
