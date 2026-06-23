@@ -168,15 +168,17 @@ function setupThemeToggle() {
   const settings = getSettings();
   applyTheme(settings.theme || 'dark');
 
-  document.getElementById('theme-toggle-btn')?.addEventListener('click', () => {
-    const isLight = document.body.classList.contains('light-theme');
-    const next = isLight ? 'dark' : 'light';
-    const s = getSettings();
-    saveSettings({ ...s, theme: next });
-    applyTheme(next);
-    // Re-render current section to pick up any inline style updates
-    if (SECTIONS[currentSection]) SECTIONS[currentSection].render();
-  });
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) {
+    btn.addEventListener('click', () => {
+      const isLight = document.body.classList.contains('light-theme');
+      const next = isLight ? 'dark' : 'light';
+      const s = getSettings();
+      saveSettings({ ...s, theme: next });
+      applyTheme(next);
+      if (SECTIONS[currentSection]) SECTIONS[currentSection].render();
+    });
+  }
 }
 
 // ============================================================
@@ -840,21 +842,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   const userBtn = document.getElementById('topbar-user-btn');
   const userDropdown = document.getElementById('user-dropdown');
 
-  // bulletproof profile dropdown
+  // bulletproof profile dropdown — use direct style, bypass CSS class system
   if (userBtn && userDropdown) {
+    // Start hidden
+    userDropdown.style.display = 'none';
+
     userBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const isOpen = userDropdown.classList.contains('user-dropdown--active');
-      if (isOpen) {
-        userDropdown.classList.remove('user-dropdown--active');
-      } else {
-        userDropdown.classList.add('user-dropdown--active');
-      }
+      const isOpen = userDropdown.style.display === 'block';
+      userDropdown.style.display = isOpen ? 'none' : 'block';
     });
 
     document.addEventListener('click', (e) => {
       if (!userBtn.contains(e.target) && !userDropdown.contains(e.target)) {
-        userDropdown.classList.remove('user-dropdown--active');
+        userDropdown.style.display = 'none';
       }
     });
   }
