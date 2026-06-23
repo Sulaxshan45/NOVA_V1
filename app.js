@@ -15,10 +15,9 @@ import { openModal, closeModal, showToast, showConfirm } from './utils/ui.js';
 export { openModal, closeModal, showToast, showConfirm };
 
 // ============================================================
-// GOOGLE CLIENT ID — set this to your Google OAuth Client ID
+// FIREBASE AUTHENTICATION
 // ============================================================
-const GOOGLE_CLIENT_ID = '341328479224-m81dbansj3tbbruvasn9l1tcqml2qnbs.apps.googleusercontent.com';
-
+import { auth, googleProvider, signInWithPopup, deleteUser, signOut } from './utils/firebase.js';
 // ============================================================
 // AUTH STATE & SESSION (localStorage-based — no server needed)
 // ============================================================
@@ -713,11 +712,15 @@ function setupSidebar() {
 // ============================================================
 let _googleInited = false;
 
-function handleGoogleCredential(response) {
+function handleFirebaseAuth(firebaseUser) {
   try {
-    const base64 = response.credential.split('.')[1];
-    const profile = JSON.parse(atob(base64.replace(/-/g, '+').replace(/_/g, '/')));
-    // Close any open modal (the fallback Google button modal)
+    const profile = {
+      name: firebaseUser.displayName || 'Google User',
+      email: firebaseUser.email,
+      picture: firebaseUser.photoURL || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80',
+      sub: firebaseUser.uid
+    };
+
     closeModal();
     showProfileSetup(profile.name, profile.email, profile.picture, (name, designation, company, picture) => {
       const user = {
@@ -726,7 +729,8 @@ function handleGoogleCredential(response) {
         designation: designation,
         company: company,
         email: profile.email,
-        picture: picture
+        picture: picture,
+        firebaseUid: firebaseUser.uid
       };
       localStorage.setItem('nova_session_user', JSON.stringify(user));
       currentUser = user;
@@ -741,20 +745,8 @@ function handleGoogleCredential(response) {
       window.navigateTo(getActiveProject() ? 'dashboard' : 'projects');
     });
   } catch (err) {
-    showToast('Google credential error: ' + err.message, 'error');
+    showToast('Firebase auth error: ' + err.message, 'error');
   }
-}
-
-function initGoogleAuth() {
-  if (_googleInited || !GOOGLE_CLIENT_ID || !window.google?.accounts?.id) return;
-  google.accounts.id.initialize({
-    client_id: GOOGLE_CLIENT_ID,
-    callback: handleGoogleCredential,
-    auto_select: false,
-    cancel_on_tap_outside: true,
-    use_fedcm_for_prompt: false // FedCM silently blocks on most browsers
-  });
-  _googleInited = true;
 }
 
 // ============================================================
@@ -819,60 +811,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Google Sign-In (client-side GSI — works on GitHub Pages)
-  document.getElementById('btn-login-google')?.addEventListener('click', () => {
-    if (!GOOGLE_CLIENT_ID) {
-      showToast('Google Client ID not configured. Use Guest login.', 'error');
-      return;
-    }
-    if (!window.google?.accounts?.id) {
-      showToast('Google Sign-In is still loading — please wait a second and try again.', 'info');
-      return;
-    }
+  // Firebase Google Sign-In
+  document.getElementById('btn-login-google')?.addEventListener('click', async () => {
     try {
-      initGoogleAuth();
-      // Skip One Tap / FedCM entirely — go straight to official Google button popup
-      openModal('Sign in with Google', `
-        <div style="text-align:center;padding:16px 0 8px;">
-          <div style="font-size:44px;margin-bottom:14px;">🔑</div>
-          <p style="color:var(--text-muted);font-size:14px;margin-bottom:24px;line-height:1.6;">
-            Click the button below to securely sign in with your Google account.
-          </p>
-          <div id="google-official-btn" style="display:flex;justify-content:center;min-height:44px;"></div>
-          <p style="color:var(--text-muted);font-size:12px;margin-top:18px;opacity:0.7;">
-            🔒 A secure Google popup will open to verify your identity.
-          </p>
-        </div>
-      `);
-      // Small delay to let modal render before injecting the button
-      setTimeout(() => {
-        const container = document.getElementById('google-official-btn');
-        if (container && window.google?.accounts?.id) {
-          google.accounts.id.renderButton(container, {
-            theme: 'outline',
-            size: 'large',
-            text: 'signin_with',
-            shape: 'rectangular',
-            width: 280
-          });
-        }
-      }, 120);
-    } catch (err) {
-      showToast('Google Sign-In error: ' + err.message, 'error');
+      const result = await signInWithPopup(auth, googleProvider);
+      handleFirebaseAuth(result.user);
+    } catch (error) {
+      showToast('Login cancelled or failed: ' + error.message, 'error');
     }
   });
-
-
-  // Pre-initialize Google as soon as the script is ready (helps with One Tap timing)
-  if (window.google?.accounts?.id) {
-    initGoogleAuth();
-  } else {
-    // Wait for the async Google script to load
-    const gsiScript = document.querySelector('script[src*="accounts.google.com/gsi"]');
-    if (gsiScript) {
-      gsiScript.addEventListener('load', initGoogleAuth);
-    }
-  }
 
   // Guest Sign In Button
   document.getElementById('btn-login-guest')?.addEventListener('click', () => {
@@ -904,22 +851,41 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Delete Account Button Handler
   document.getElementById('btn-delete-account')?.addEventListener('click', () => {
     userDropdown?.classList.remove('user-dropdown--active');
-    showConfirm('This will wipe your data from this device and prepare a deletion request email. Proceed?', () => {
-      // 1. Prepare an email to the admin for account deletion (since there is no backend server)
-      const email = 'support@nova-construction.com';
-      const subject = encodeURIComponent('Account Deletion Request - NOVA');
-      const body = encodeURIComponent(`Hello,\n\nPlease delete my account from NOVA.\n\nUser Details:\nName: ${currentUser?.name}\nEmail: ${currentUser?.email}\nID: ${currentUser?.id}\n\nThank you.`);
-      window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+    showConfirm('This will wipe your data and delete your account identity from our servers. Proceed?', async () => {
+      try {
+        if (auth.currentUser) {
+          await deleteUser(auth.currentUser);
+        }
+        
+        // 1. Prepare an email to the admin for account deletion record
+        const email = 'support@nova-construction.com';
+        const subject = encodeURIComponent('Account Deletion Confirmation - NOVA');
+        const body = encodeURIComponent(`Hello,\n\nI have deleted my account from NOVA.\n\nUser Details:\nName: ${currentUser?.name}\nEmail: ${currentUser?.email}\nID: ${currentUser?.id}\n\nThank you.`);
+        window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
 
-      // 2. Wipe the local data immediately to protect privacy
-      clearLocalSessionCache();
-      localStorage.removeItem('nova_session_user');
-      currentUser = null;
-      showToast('Local data wiped. Please send the email to complete account deletion.', 'info');
-      checkAuthSession();
+        // 2. Wipe the local data immediately
+        clearLocalSessionCache();
+        localStorage.removeItem('nova_session_user');
+        currentUser = null;
+        showToast('Account successfully deleted from server and local device.', 'success');
+        checkAuthSession();
+      } catch (err) {
+        if (err.code === 'auth/requires-recent-login') {
+          showToast('Security required: Please log out, log back in, and try deleting again.', 'error');
+        } else {
+          showToast('Failed to delete account from server: ' + err.message, 'error');
+        }
+      }
     });
   });
-  document.getElementById('btn-logout')?.addEventListener('click', () => {
+  document.getElementById('btn-logout')?.addEventListener('click', async () => {
+    try {
+      if (auth.currentUser) {
+        await signOut(auth);
+      }
+    } catch (e) {
+      console.error('Firebase signout error', e);
+    }
     localStorage.removeItem('nova_session_user');
     clearLocalSessionCache();
     currentUser = null;
