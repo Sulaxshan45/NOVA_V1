@@ -5,7 +5,7 @@
 import { generateUUID, formatCurrency, formatDate, escapeHtml } from '../utils/helpers.js';
 import { getExpenses, saveExpenses } from '../utils/storage.js';
 import { getActiveProject } from './projects.js';
-import { showToast, showConfirm, openModal, closeModal } from '../app.js';
+import { showToast, showConfirm, openModal, closeModal } from '../utils/ui.js';
 
 const CATEGORIES = ['Food', 'Vehicle', 'Transport', 'Tool Rental', 'Others'];
 
@@ -164,3 +164,4 @@ function deleteExpense(id) {
     renderExpenses();
   });
 }
+

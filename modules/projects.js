@@ -4,7 +4,7 @@
 
 import { generateUUID, formatDate, escapeHtml } from '../utils/helpers.js';
 import { getProjects, saveProjects, getTasks, saveTasks, getMaterials, saveMaterials, getActiveProjectId, saveActiveProjectId } from '../utils/storage.js';
-import { showToast, showConfirm, openModal, closeModal } from '../app.js';
+import { showToast, showConfirm, openModal, closeModal } from '../utils/ui.js';
 
 let projects = [];
 
@@ -222,3 +222,4 @@ function deleteProject(id) {
     renderProjects();
   });
 }
+

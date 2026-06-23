@@ -5,7 +5,7 @@
 import { generateUUID, formatDate, getTaskEndDate, getStatusClass, escapeHtml } from '../utils/helpers.js';
 import { getTasks, saveTasks, getMaterials } from '../utils/storage.js';
 import { getActiveProject } from './projects.js';
-import { showToast, showConfirm, openModal, closeModal } from '../app.js';
+import { showToast, showConfirm, openModal, closeModal } from '../utils/ui.js';
 
 export function renderTasks() {
   const project = getActiveProject();
@@ -283,3 +283,4 @@ function openMaterialsModal(taskId, project) {
 
   bindMaterialRowEvents();
 }
+

@@ -6,7 +6,7 @@ import { formatCurrency, getTaskEndDate, formatDate, escapeHtml } from '../utils
 import { getTasks, getMaterials, getSettings, getExpenses } from '../utils/storage.js';
 import { getActiveProject } from './projects.js';
 import { exportTaskPDF, exportProjectBOQ } from '../utils/pdf.js';
-import { showToast } from '../app.js';
+import { showToast } from '../utils/ui.js';
 
 export function renderBilling() {
   const project = getActiveProject();
@@ -215,3 +215,4 @@ export function renderBilling() {
     });
   });
 }
+

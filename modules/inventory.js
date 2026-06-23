@@ -5,7 +5,7 @@
 import { generateUUID, formatCurrency, formatNumber, escapeHtml } from '../utils/helpers.js';
 import { getMaterials, saveMaterials } from '../utils/storage.js';
 import { getActiveProject } from './projects.js';
-import { showToast, showConfirm, openModal, closeModal } from '../app.js';
+import { showToast, showConfirm, openModal, closeModal } from '../utils/ui.js';
 
 const UNITS = ['Bags', 'm³', 'Kg', 'L', 'MT', 'Pieces', 'Meters', 'Sq.m', 'Sq.ft', 'Nos'];
 
@@ -178,3 +178,4 @@ function deleteMaterial(id) {
     renderInventory();
   });
 }
+

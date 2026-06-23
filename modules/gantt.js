@@ -201,3 +201,4 @@ export function buildMiniGantt(tasks, wrapper) {
   html += '</div>';
   wrapper.innerHTML = html;
 }
+
