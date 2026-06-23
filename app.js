@@ -519,7 +519,7 @@ function showProfileSetup(prefillName, prefillEmail, prefillPicture, onComplete)
     </div>
     <div class="form-group">
       <label class="form-label">Your Name <span style="color:var(--status-red)">*</span></label>
-      <input id="setup-name" class="form-input" type="text" placeholder="e.g. Sulaxshan Kumar" value="${prefillName || ''}" autocomplete="name" maxlength="60" />
+      <input id="setup-name" class="form-input" type="text" placeholder="e.g. John Doe" value="${prefillName || ''}" autocomplete="name" maxlength="60" />
     </div>
     <div class="form-group" style="margin-top:14px;">
       <label class="form-label">Job Title / Designation <span style="color:var(--status-red)">*</span></label>
