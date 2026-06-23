@@ -788,6 +788,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Check localStorage session (no server needed)
   const isLoggedIn = checkAuthSession();
 
+  // If already logged in (session restored), initialize app state
+  if (isLoggedIn) {
+    initProjects();
+    updateNavVisibility();
+    window.navigateTo(getActiveProject() ? 'dashboard' : 'projects');
+  }
+
   // Wire sidebar navigation
   document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', () => {
