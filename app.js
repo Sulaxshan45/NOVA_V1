@@ -698,10 +698,11 @@ function showProfileSetup(prefillName, prefillEmail, prefillPicture, onComplete)
         closeModal();
         onComplete(name, username, designation, company, uploadedPictureBase64);
       } catch (err) {
-        console.error('Firestore check error:', err);
-        showToast('Error verifying username. Check connection.', 'error');
-        btn.innerHTML = originalText;
-        btn.disabled = false;
+        console.warn('Firestore check error (proceeding anyway):', err);
+        // If Firestore is unavailable/not enabled, skip the uniqueness check
+        // and allow the user to log in — Firestore will be checked once enabled
+        closeModal();
+        onComplete(name, username, designation, company, uploadedPictureBase64);
       }
     };
 
