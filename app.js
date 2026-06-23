@@ -852,7 +852,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // EMAILJS CONFIGURATION
   // ============================================================
   const EMAILJS_SERVICE_ID = 'service_vleyg5b';
-  const EMAILJS_TEMPLATE_ID = 'template_mx85zt9';
+  const EMAILJS_TEMPLATE_ID = 'template_ou2jvgu';
   const EMAILJS_PUBLIC_KEY = 'CES5n8wtVaFXM5HYQ';
 
   // Process Account Deletion Link from Email
