@@ -890,13 +890,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // NOTE: Logout and Delete Account handlers are defined below (lines ~1046+)
 
-  // Firebase Google Sign-In (use redirect — popup is blocked by GitHub Pages COOP headers)
+  // Firebase Google Sign-In
   document.getElementById('btn-login-google')?.addEventListener('click', async () => {
     try {
-      showToast('Redirecting to Google...', 'info');
-      await signInWithRedirect(auth, googleProvider);
+      showToast('Opening Google Sign-In...', 'info');
+      // Using popup instead of redirect to avoid the 404 /__/firebase/init.json error on unconfigured auth domains
+      const result = await signInWithPopup(auth, googleProvider);
+      if (result && result.user) {
+        handleFirebaseAuth(result.user);
+      }
     } catch (error) {
-      showToast('Login failed: ' + error.message, 'error');
+      if (error.code !== 'auth/popup-closed-by-user') {
+        showToast('Login failed: ' + error.message, 'error');
+      }
     }
   });
 
