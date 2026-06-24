@@ -18,7 +18,7 @@ export { openModal, closeModal, showToast, showConfirm };
 // ============================================================
 // FIREBASE AUTHENTICATION
 // ============================================================
-import { auth, googleProvider, signInWithRedirect, getRedirectResult, deleteUser, signOut, db } from './utils/firebase.js';
+import { auth, googleProvider, signInWithPopup, getRedirectResult, deleteUser, signOut, db } from './utils/firebase.js';
 import { collection, query, where, getDocs, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 // ============================================================
 // AUTH STATE & SESSION (localStorage-based — no server needed)
