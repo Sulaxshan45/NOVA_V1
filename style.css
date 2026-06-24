@@ -1499,6 +1499,9 @@ body.project-active .nav-project-group {
   font-size: 16px;
   transition: all var(--transition);
   flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+  overflow: visible;
 }
 
 .theme-toggle-btn:hover {
@@ -1822,10 +1825,20 @@ body.light-theme .topbar-project-badge {
 body.light-theme .theme-toggle-btn {
   background: rgba(0, 0, 0, 0.04);
   border-color: rgba(0, 0, 0, 0.1);
+  color: #1a1a2e;
 }
 
 body.light-theme .theme-toggle-btn:hover {
   background: rgba(0, 0, 0, 0.08);
+}
+
+/* Light mode topbar text */
+body.light-theme .topbar-section {
+  color: #1a1a2e;
+}
+
+body.light-theme .topbar-sep {
+  color: #9ca3af;
 }
 
 body.light-theme .glass-card {
@@ -2404,15 +2417,38 @@ body.light-theme .user-dropdown {
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
 }
 
+body.light-theme .user-dropdown-name {
+  color: #1a1a2e;
+}
+
+body.light-theme .user-dropdown-email {
+  color: #6b7280;
+}
+
+body.light-theme .dropdown-item {
+  color: #374151;
+}
+
 body.light-theme .dropdown-item:hover {
-  background: rgba(0, 0, 0, 0.03);
+  background: rgba(0, 0, 0, 0.04);
+  color: #1a1a2e;
+}
+
+body.light-theme .dropdown-item--danger {
+  color: #dc2626;
 }
 
 body.light-theme .dropdown-item--danger:hover {
   background: rgba(239, 68, 68, 0.06);
+  color: #b91c1c;
 }
 
 body.light-theme .dropdown-divider {
   background: rgba(0, 0, 0, 0.06);
 }
 
+/* btn-block utility */
+.btn-block {
+  width: 100%;
+  display: flex;
+}

@@ -847,20 +847,34 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   setupSidebar();
-  setupThemeToggle();
-  // Profile Dropdown Toggle
+  // Profile Dropdown — move to body to escape topbar stacking context (backdrop-filter creates one)
   const userBtn = document.getElementById('topbar-user-btn');
   const userDropdown = document.getElementById('user-dropdown');
 
-  // bulletproof profile dropdown — use direct style, bypass CSS class system
   if (userBtn && userDropdown) {
-    // Start hidden
+    // Move dropdown to body so it's NOT clipped by topbar's stacking context
+    document.body.appendChild(userDropdown);
+
+    // Style as fixed so it doesn't depend on parent context
+    userDropdown.style.position = 'fixed';
+    userDropdown.style.zIndex = '99999';
     userDropdown.style.display = 'none';
+
+    function positionDropdown() {
+      const rect = userBtn.getBoundingClientRect();
+      userDropdown.style.top = (rect.bottom + 8) + 'px';
+      userDropdown.style.left = '';
+      userDropdown.style.right = (window.innerWidth - rect.right) + 'px';
+    }
 
     userBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const isOpen = userDropdown.style.display === 'block';
-      userDropdown.style.display = isOpen ? 'none' : 'block';
+      if (userDropdown.style.display === 'block') {
+        userDropdown.style.display = 'none';
+      } else {
+        positionDropdown();
+        userDropdown.style.display = 'block';
+      }
     });
 
     document.addEventListener('click', (e) => {
@@ -868,39 +882,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         userDropdown.style.display = 'none';
       }
     });
+
+    window.addEventListener('resize', () => {
+      if (userDropdown.style.display === 'block') positionDropdown();
+    });
   }
 
-  // Logout
-  document.getElementById('btn-logout')?.addEventListener('click', async () => {
-    try {
-      if (auth.currentUser) await signOut(auth);
-    } catch(e) {}
-    localStorage.removeItem('nova_session_user');
-    currentUser = null;
-    document.getElementById('app-shell').style.display = 'none';
-    document.getElementById('login-screen').style.display = 'flex';
-    document.getElementById('user-dropdown')?.classList.remove('user-dropdown--active');
-  });
-
-  // Delete Account
-  document.getElementById('btn-delete-account')?.addEventListener('click', () => {
-    showConfirm('Delete Account', 'Are you sure you want to delete your account? This cannot be undone.', async (confirmed) => {
-      if (!confirmed) return;
-      try {
-        if (auth.currentUser) {
-           await deleteUser(auth.currentUser);
-        }
-        localStorage.removeItem('nova_session_user');
-        currentUser = null;
-        document.getElementById('app-shell').style.display = 'none';
-        document.getElementById('login-screen').style.display = 'flex';
-        document.getElementById('user-dropdown')?.classList.remove('user-dropdown--active');
-        showToast('Account deleted successfully', 'success');
-      } catch (err) {
-        showToast('Error deleting account: ' + err.message, 'error');
-      }
-    });
-  });
+  // NOTE: Logout and Delete Account handlers are defined below (lines ~1046+)
 
   // Firebase Google Sign-In (use redirect — popup is blocked by GitHub Pages COOP headers)
   document.getElementById('btn-login-google')?.addEventListener('click', async () => {
