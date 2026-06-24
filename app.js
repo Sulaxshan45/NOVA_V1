@@ -792,14 +792,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   const isLoggedIn = checkAuthSession();
 
   // Handle Google redirect result (after signInWithRedirect returns)
-  try {
-    const result = await getRedirectResult(auth);
+  getRedirectResult(auth).then(result => {
     if (result && result.user) {
       handleFirebaseAuth(result.user);
     }
-  } catch (err) {
+  }).catch(err => {
     console.warn('Redirect result error:', err.message);
-  }
+  });
 
   // If already logged in (session restored), initialize app state
   if (isLoggedIn) {
@@ -847,6 +846,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   setupSidebar();
+  setupThemeToggle();
   // Profile Dropdown — move to body to escape topbar stacking context (backdrop-filter creates one)
   const userBtn = document.getElementById('topbar-user-btn');
   const userDropdown = document.getElementById('user-dropdown');

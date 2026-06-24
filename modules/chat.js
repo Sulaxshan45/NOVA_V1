@@ -2,9 +2,7 @@ import { db, storage } from '../utils/firebase.js';
 import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, getDocs, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-// We'll lazy import UI helpers to avoid circular dependencies if needed
-// but app.js exports them, so we can import them:
-import { openModal, closeModal, showToast } from '../app.js';
+import { openModal, closeModal, showToast } from '../utils/ui.js';
 
 export function renderChat() {
     const container = document.getElementById('section-chat');
