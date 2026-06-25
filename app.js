@@ -25,9 +25,21 @@ import { collection, query, where, getDocs, doc, setDoc } from "https://www.gsta
 // ============================================================
 let currentUser = null;
 
-function checkAuthSession() {
+async function checkAuthSession() {
   try {
-    const stored = localStorage.getItem('nova_session_user');
+    let stored = localStorage.getItem('nova_session_user');
+    if (!stored) {
+      try {
+        const res = await fetch('/api/auth/session');
+        const data = await res.json();
+        if (data.loggedIn && data.user) {
+          stored = JSON.stringify(data.user);
+          localStorage.setItem('nova_session_user', stored);
+        }
+      } catch (err) {
+        console.warn('Backend session check error:', err);
+      }
+    }
     if (stored) {
       currentUser = JSON.parse(stored);
       updateSidebarUser();
@@ -788,8 +800,8 @@ function handleFirebaseAuth(firebaseUser) {
 // INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
-  // Check localStorage session (no server needed)
-  const isLoggedIn = checkAuthSession();
+  // Check local/backend session
+  const isLoggedIn = await checkAuthSession();
 
   // Handle Google redirect result (after signInWithRedirect returns)
   getRedirectResult(auth).then(result => {
@@ -890,20 +902,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // NOTE: Logout and Delete Account handlers are defined below (lines ~1046+)
 
-  // Firebase Google Sign-In
-  document.getElementById('btn-login-google')?.addEventListener('click', async () => {
-    try {
-      showToast('Opening Google Sign-In...', 'info');
-      // Using popup instead of redirect to avoid the 404 /__/firebase/init.json error on unconfigured auth domains
-      const result = await signInWithPopup(auth, googleProvider);
-      if (result && result.user) {
-        handleFirebaseAuth(result.user);
-      }
-    } catch (error) {
-      if (error.code !== 'auth/popup-closed-by-user') {
-        showToast('Login failed: ' + error.message, 'error');
-      }
-    }
+  // Backend Google Sign-In
+  document.getElementById('btn-login-google')?.addEventListener('click', () => {
+    showToast('Redirecting to Google Sign-In...', 'info');
+    window.location.href = '/auth/google';
   });
 
   // Guest Sign In Button
@@ -1027,6 +1029,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (e) {
       console.error('Firebase signout error', e);
     }
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (e) {}
     localStorage.removeItem('nova_session_user');
     clearLocalSessionCache();
     currentUser = null;
