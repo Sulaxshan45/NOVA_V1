@@ -19,7 +19,7 @@ export { openModal, closeModal, showToast, showConfirm };
 // FIREBASE AUTHENTICATION
 // ============================================================
 import { auth, googleProvider, signInWithPopup, getRedirectResult, deleteUser, signOut, db } from './utils/firebase.js';
-import { collection, query, where, getDocs, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { collection, query, where, getDocs, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 // ============================================================
 // AUTH STATE & SESSION (localStorage-based — no server needed)
 // ============================================================
@@ -738,8 +738,30 @@ function setupSidebar() {
 // ============================================================
 let _googleInited = false;
 
-function handleFirebaseAuth(firebaseUser) {
+async function handleFirebaseAuth(firebaseUser) {
   try {
+    const userId = `google_${firebaseUser.uid}`;
+    
+    // Check if user already exists in Firestore
+    const userRef = doc(db, 'users', userId);
+    const userSnap = await getDoc(userRef);
+    
+    if (userSnap.exists()) {
+      const user = userSnap.data();
+      localStorage.setItem('nova_session_user', JSON.stringify(user));
+      currentUser = user;
+      showToast(`Welcome back, ${user.name} ✓`, 'success');
+      updateSidebarUser();
+      const loginScr = document.getElementById('login-screen');
+      const appSh = document.getElementById('app-shell');
+      if (loginScr) loginScr.style.display = 'none';
+      if (appSh) appSh.style.display = 'flex';
+      initProjects();
+      updateNavVisibility();
+      window.navigateTo(getActiveProject() ? 'dashboard' : 'projects');
+      return;
+    }
+
     const profile = {
       name: firebaseUser.displayName || 'Google User',
       email: firebaseUser.email,
@@ -750,7 +772,7 @@ function handleFirebaseAuth(firebaseUser) {
     closeModal();
     showProfileSetup(profile.name, profile.email, profile.picture, async (name, username, designation, company, picture) => {
       const user = {
-        id: `google_${profile.sub}`,
+        id: userId,
         name: name,
         username: username,
         designation: designation,
@@ -802,6 +824,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // If already logged in (session restored), initialize app state
   if (isLoggedIn) {
+    // Refresh user from Firestore to catch company/invite updates
+    try {
+      if (currentUser && currentUser.id) {
+        const userRef = doc(db, 'users', currentUser.id);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          currentUser = userSnap.data();
+          localStorage.setItem('nova_session_user', JSON.stringify(currentUser));
+          updateSidebarUser();
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to refresh user data from Firestore:", err);
+    }
     initProjects();
     updateNavVisibility();
     window.navigateTo(getActiveProject() ? 'dashboard' : 'projects');
