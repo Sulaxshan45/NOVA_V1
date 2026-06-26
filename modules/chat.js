@@ -1,5 +1,5 @@
 import { db, storage } from '../utils/firebase.js';
-import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, getDocs, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, getDocs, doc, setDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 import { openModal, closeModal, showToast } from '../utils/ui.js';
@@ -41,14 +41,21 @@ export function renderChat() {
     ` : '';
 
     container.innerHTML = `
-      <div class="section-header" style="display:flex; justify-content:space-between; align-items:center;">
-        <div>
-           <h2 class="section-title">💬 Team Chat</h2>
-           <p class="section-subtitle">${escapeHtml(currentChatCompany)}</p>
+      <div class="section-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <div style="display:flex; align-items:center; gap: 12px;">
+           <div style="position: relative; display: inline-block;">
+               <img id="chat-group-logo" src="https://via.placeholder.com/40" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); cursor: ${isManager ? 'pointer' : 'default'};">
+               ${isManager ? `<label for="chat-logo-upload" style="position: absolute; bottom: -2px; right: -4px; background: var(--accent); border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 10px; color: white; border: 2px solid var(--bg-card);">✏️</label><input type="file" id="chat-logo-upload" accept="image/*" style="display:none;" />` : ''}
+           </div>
+           <div>
+               <h2 class="section-title" style="margin: 0; line-height: 1;">💬 Team Chat</h2>
+               <p class="section-subtitle" style="margin: 4px 0 0 0;">${escapeHtml(currentChatCompany)}</p>
+           </div>
         </div>
-        <div style="display:flex; gap:12px; align-items:center;">
-           <input type="text" id="chat-search" class="form-input" placeholder="🔍 Search messages..." style="max-width:200px; font-size:13px; padding:6px 12px; border-radius:20px;" />
-           ${isManager ? `<button class="btn btn-primary" id="btn-invite-member">👤 + Invite Member</button>` : ''}
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+           <button class="btn btn-ghost" id="btn-view-members" style="padding: 6px 12px; font-size: 13px;">👥 Members</button>
+           <input type="text" id="chat-search" class="form-input" placeholder="🔍 Search messages..." style="max-width:180px; font-size:13px; padding:6px 12px; border-radius:20px;" />
+           ${isManager ? `<button class="btn btn-primary" id="btn-invite-member" style="padding: 6px 12px; font-size: 13px;">👤 + Invite</button>` : ''}
         </div>
       </div>
 
@@ -87,6 +94,7 @@ export function renderChat() {
             if (subtitle) subtitle.textContent = currentChatCompany;
 
             initChatListener(currentChatCompany);
+            loadGroupProfile(currentChatCompany);
         });
     });
 
@@ -103,25 +111,25 @@ export function renderChat() {
         
         if (match) {
             const queryText = match[1].toLowerCase();
-            // Dynamically import getTasks to avoid circular deps if needed
-            const { getTasks } = await import('../utils/storage.js');
-            const tasks = getTasks() || [];
+            const q = query(collection(db, 'users'), where('companies', 'array-contains', currentChatCompany));
+            const qs = await getDocs(q);
+            const members = qs.docs.map(doc => doc.data());
             
-            const filtered = tasks.filter(t => t.name.toLowerCase().includes(queryText)).slice(0, 5);
+            const filtered = members.filter(m => m.name.toLowerCase().includes(queryText) || (m.username && m.username.toLowerCase().includes(queryText))).slice(0, 5);
             
             if (filtered.length > 0) {
-                mentionPopup.innerHTML = filtered.map(t => `
+                mentionPopup.innerHTML = filtered.map(m => `
                    <div class="mention-item" style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 13px;">
-                      <span style="font-weight:bold;">${t.name}</span>
-                      <div style="font-size:11px; color:var(--text-muted)">${t.status || 'Pending'}</div>
+                      <span style="font-weight:bold;">${escapeHtml(m.name)}</span>
+                      <div style="font-size:11px; color:var(--text-muted)">@${escapeHtml(m.username || 'user')}</div>
                    </div>
                 `).join('');
                 mentionPopup.style.display = 'block';
                 
                 mentionPopup.querySelectorAll('.mention-item').forEach((item, idx) => {
                     item.addEventListener('click', () => {
-                        const taskName = filtered[idx].name;
-                        const newVal = val.replace(/@([a-zA-Z0-9_-]*)$/, `@"${taskName}" `);
+                        const userName = filtered[idx].name;
+                        const newVal = val.replace(/@([a-zA-Z0-9_-]*)$/, `@"${userName}" `);
                         chatInput.value = newVal;
                         mentionPopup.style.display = 'none';
                         chatInput.focus();
@@ -156,6 +164,33 @@ export function renderChat() {
         if (!file) return;
         await uploadFileAndSend(file, currentUser, currentChatCompany);
         e.target.value = ''; // Reset
+    });
+
+    loadGroupProfile(currentChatCompany);
+
+    document.getElementById('btn-view-members')?.addEventListener('click', () => {
+        showMembersModal(currentUser, currentChatCompany, isManager);
+    });
+
+    document.getElementById('chat-logo-upload')?.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const img = document.getElementById('chat-group-logo');
+        img.style.opacity = '0.5';
+        try {
+            const compressed = await compressImage(file, 400); 
+            const fileRef = ref(storage, `companies/${currentChatCompany}/logo_${Date.now()}`);
+            await uploadBytes(fileRef, compressed);
+            const url = await getDownloadURL(fileRef);
+            await setDoc(doc(db, 'company_profiles', currentChatCompany), { logoUrl: url }, { merge: true });
+            img.src = url;
+            showToast('Group logo updated', 'success');
+        } catch (err) {
+            console.error(err);
+            showToast('Failed to upload logo', 'error');
+        } finally {
+            img.style.opacity = '1';
+        }
     });
 
     if (isManager) {
@@ -268,15 +303,27 @@ async function uploadFileAndSend(file, user, company) {
     const msgContainer = document.getElementById('chat-messages');
     let tempId = 'temp_' + Date.now();
     if (msgContainer) {
-        msgContainer.innerHTML += `
+        msgContainer.insertAdjacentHTML('beforeend', `
            <div id="${tempId}" class="chat-message-item" style="display: flex; flex-direction: column; align-items: flex-end; max-width: 80%; align-self: flex-end; opacity: 0.5;">
               <span style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px; padding: 0 4px;">You • Uploading...</span>
-              <div style="background: var(--accent); color: #fff; padding: 12px 16px; border-radius: 16px; font-size: 14px;">
+              <div id="${tempId}_content" style="background: var(--accent); color: #fff; padding: 12px 16px; border-radius: 16px; font-size: 14px;">
                  📎 ${file.name}
               </div>
            </div>
-        `;
+        `);
         msgContainer.scrollTop = msgContainer.scrollHeight;
+
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const contentEl = document.getElementById(tempId + '_content');
+                if (contentEl) {
+                    contentEl.innerHTML = `<img src="${ev.target.result}" style="max-width:200px; border-radius:8px;"/><br><span style="font-size:11px;">Uploading...</span>`;
+                    msgContainer.scrollTop = msgContainer.scrollHeight;
+                }
+            };
+            reader.readAsDataURL(file);
+        }
     }
 
     try {
@@ -424,4 +471,120 @@ function compressImage(file, maxWidth = 1200, quality = 0.7) {
         };
         reader.onerror = () => resolve(file); // Fallback
     });
+}
+
+async function loadGroupProfile(company) {
+    const img = document.getElementById('chat-group-logo');
+    if (!img) return;
+    img.src = 'https://via.placeholder.com/40'; // fallback
+    try {
+        const snap = await getDoc(doc(db, 'company_profiles', company));
+        if (snap.exists() && snap.data().logoUrl) {
+            img.src = snap.data().logoUrl;
+        }
+    } catch (err) {
+        console.error("Error loading profile", err);
+    }
+}
+
+async function showMembersModal(currentUser, company, isManager) {
+    const html = `
+        <div style="text-align:center; margin-bottom: 16px;">
+           <div style="font-size: 40px; margin-bottom: 8px;">👥</div>
+           <p style="color: var(--text-muted); font-size: 14px;">Members of <b>${escapeHtml(company)}</b></p>
+        </div>
+        <div id="members-list-container" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+           <div style="text-align:center; color: var(--text-muted);">Loading members...</div>
+        </div>
+        ${isManager ? `
+        <div style="margin-top: 24px; border-top: 1px solid var(--border); padding-top: 16px; text-align: center;">
+           <button class="btn btn-danger" id="btn-delete-group" style="width: 100%; padding: 12px; font-weight: bold;">🗑️ Delete Group</button>
+        </div>
+        ` : ''}
+    `;
+    openModal('Group Members', html);
+
+    const container = document.getElementById('members-list-container');
+    try {
+        const q = query(collection(db, 'users'), where('companies', 'array-contains', company));
+        const qs = await getDocs(q);
+        const members = qs.docs.map(d => d.data());
+        
+        container.innerHTML = members.map(m => `
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--bg-body); border-radius: 8px; border: 1px solid var(--border);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <img src="${m.picture || 'https://via.placeholder.com/40'}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;">
+                    <div>
+                        <div style="font-weight: 600; font-size: 14px;">${escapeHtml(m.name)} ${m.id === currentUser.id ? '(You)' : ''}</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">@${escapeHtml(m.username || '')} • ${escapeHtml(m.designation || '')}</div>
+                    </div>
+                </div>
+                ${isManager && m.id !== currentUser.id ? `<button class="btn btn-ghost btn-remove-member" data-userid="${m.id}" style="color: var(--status-red); padding: 4px 8px; font-size: 12px; border: 1px solid var(--status-red);">Remove</button>` : ''}
+            </div>
+        `).join('');
+
+        document.querySelectorAll('.btn-remove-member').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const targetId = e.target.dataset.userid;
+                if (confirm('Are you sure you want to remove this member from the chat?')) {
+                    e.target.innerHTML = '...';
+                    e.target.disabled = true;
+                    try {
+                        const userDoc = await getDoc(doc(db, 'users', targetId));
+                        if (userDoc.exists()) {
+                            const userData = userDoc.data();
+                            if (userData.companies) {
+                                userData.companies = userData.companies.filter(c => c !== company);
+                                await setDoc(doc(db, 'users', targetId), userData);
+                                showToast('Member removed', 'success');
+                                closeModal();
+                            }
+                        }
+                    } catch (err) {
+                        showToast('Error removing member', 'error');
+                        e.target.innerHTML = 'Remove';
+                        e.target.disabled = false;
+                    }
+                }
+            });
+        });
+
+        document.getElementById('btn-delete-group')?.addEventListener('click', async () => {
+            if (confirm(`WARNING: This will permanently delete all chat messages in ${company} and remove it for all members. This cannot be undone. Type 'DELETE' to confirm.`)) {
+                const input = prompt('Type DELETE to confirm:');
+                if (input === 'DELETE') {
+                    showToast('Deleting group...', 'info');
+                    closeModal();
+                    try {
+                        // 1. Remove company from all members
+                        for (const m of members) {
+                            if (m.companies) {
+                                m.companies = m.companies.filter(c => c !== company);
+                                await setDoc(doc(db, 'users', m.id), m);
+                            }
+                        }
+                        // 2. Delete messages (fetch all and delete)
+                        const msgsQ = query(collection(db, 'companies', company, 'messages'));
+                        const msgsQS = await getDocs(msgsQ);
+                        for (const msgDoc of msgsQS.docs) {
+                            await deleteDoc(msgDoc.ref);
+                        }
+                        
+                        // Local update for current user
+                        if (currentUser.companies) {
+                            currentUser.companies = currentUser.companies.filter(c => c !== company);
+                            localStorage.setItem('nova_session_user', JSON.stringify(currentUser));
+                            location.reload(); // Reload to refresh state completely
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        showToast('Error deleting group', 'error');
+                    }
+                }
+            }
+        });
+
+    } catch (err) {
+        container.innerHTML = `<div style="text-align:center; color: var(--status-red);">Failed to load members</div>`;
+    }
 }
