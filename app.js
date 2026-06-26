@@ -748,6 +748,7 @@ async function handleFirebaseAuth(firebaseUser) {
     
     if (userSnap.exists()) {
       const user = userSnap.data();
+      if (!user.companies) user.companies = [user.company];
       localStorage.setItem('nova_session_user', JSON.stringify(user));
       currentUser = user;
       showToast(`Welcome back, ${user.name} ✓`, 'success');
@@ -777,6 +778,7 @@ async function handleFirebaseAuth(firebaseUser) {
         username: username,
         designation: designation,
         company: company,
+        companies: [company],
         email: profile.email,
         picture: picture,
         firebaseUid: firebaseUser.uid
@@ -831,6 +833,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
           currentUser = userSnap.data();
+          if (!currentUser.companies) currentUser.companies = [currentUser.company];
           localStorage.setItem('nova_session_user', JSON.stringify(currentUser));
           updateSidebarUser();
         }
@@ -952,6 +955,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         username: username,
         designation: designation,
         company: company,
+        companies: [company],
         email: 'guest@nova-construction.com',
         picture: picture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80'
       };

@@ -4,6 +4,9 @@ import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/fireba
 
 import { openModal, closeModal, showToast } from '../utils/ui.js';
 
+let currentChatCompany = null;
+let unsubChat = null;
+
 export function renderChat() {
     const container = document.getElementById('section-chat');
     if (!container) return;
@@ -14,7 +17,11 @@ export function renderChat() {
         return;
     }
     const currentUser = JSON.parse(stored);
-    const company = currentUser.company || 'Global Workspace';
+    const companies = currentUser.companies || [currentUser.company || 'Global Workspace'];
+    
+    if (!currentChatCompany || !companies.includes(currentChatCompany)) {
+        currentChatCompany = companies[0];
+    }
 
     // Simple check if user is a Manager/Admin
     const isManager = currentUser.designation && (
@@ -23,11 +30,21 @@ export function renderChat() {
         currentUser.designation.toLowerCase().includes('admin')
     );
 
+    const companyTabsHtml = companies.length > 1 ? `
+        <div style="display:flex; gap:8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px;">
+            ${companies.map(c => `
+                <button class="btn ${c === currentChatCompany ? 'btn-primary' : 'btn-ghost'} chat-tab-btn" data-company="${escapeHtml(c)}" style="border-radius: 20px; padding: 6px 16px; font-size: 13px; white-space: nowrap;">
+                    ${escapeHtml(c)}
+                </button>
+            `).join('')}
+        </div>
+    ` : '';
+
     container.innerHTML = `
       <div class="section-header" style="display:flex; justify-content:space-between; align-items:center;">
         <div>
            <h2 class="section-title">💬 Team Chat</h2>
-           <p class="section-subtitle">${company}</p>
+           <p class="section-subtitle">${escapeHtml(currentChatCompany)}</p>
         </div>
         <div style="display:flex; gap:12px; align-items:center;">
            <input type="text" id="chat-search" class="form-input" placeholder="🔍 Search messages..." style="max-width:200px; font-size:13px; padding:6px 12px; border-radius:20px;" />
@@ -35,7 +52,9 @@ export function renderChat() {
         </div>
       </div>
 
-      <div class="chat-layout" style="display: flex; height: calc(100vh - 160px); gap: 16px; margin-top: 16px;">
+      ${companyTabsHtml}
+
+      <div class="chat-layout" style="display: flex; height: calc(100vh - ${companies.length > 1 ? '210px' : '160px'}); gap: 16px; margin-top: ${companies.length > 1 ? '0' : '16px'};">
          <div class="chat-main" style="flex: 1; display: flex; flex-direction: column; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; position: relative;">
             
             <div id="chat-messages" style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px;">
@@ -52,7 +71,24 @@ export function renderChat() {
       </div>
     `;
 
-    initChatListener(company);
+    initChatListener(currentChatCompany);
+
+    document.querySelectorAll('.chat-tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            currentChatCompany = e.target.dataset.company;
+            document.querySelectorAll('.chat-tab-btn').forEach(b => {
+                b.classList.remove('btn-primary');
+                b.classList.add('btn-ghost');
+            });
+            e.target.classList.remove('btn-ghost');
+            e.target.classList.add('btn-primary');
+            
+            const subtitle = document.querySelector('.section-subtitle');
+            if (subtitle) subtitle.textContent = currentChatCompany;
+
+            initChatListener(currentChatCompany);
+        });
+    });
 
     // Task Mentions Logic
     const chatInput = document.getElementById('chat-input');
@@ -102,12 +138,12 @@ export function renderChat() {
     // Event Listeners
     document.getElementById('btn-chat-send')?.addEventListener('click', () => {
         mentionPopup.style.display = 'none';
-        sendMessage(currentUser, company);
+        sendMessage(currentUser, currentChatCompany);
     });
     chatInput?.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             mentionPopup.style.display = 'none';
-            sendMessage(currentUser, company);
+            sendMessage(currentUser, currentChatCompany);
         }
     });
     
@@ -118,7 +154,7 @@ export function renderChat() {
     document.getElementById('chat-file-input')?.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        await uploadFileAndSend(file, currentUser, company);
+        await uploadFileAndSend(file, currentUser, currentChatCompany);
         e.target.value = ''; // Reset
     });
 
@@ -138,7 +174,7 @@ export function renderChat() {
     });
 }
 
-let unsubChat = null;
+
 
 function initChatListener(company) {
     if (unsubChat) unsubChat();
@@ -229,9 +265,28 @@ async function uploadFileAndSend(file, user, company) {
     attachBtn.innerHTML = '⏳';
     attachBtn.disabled = true;
 
+    const msgContainer = document.getElementById('chat-messages');
+    let tempId = 'temp_' + Date.now();
+    if (msgContainer) {
+        msgContainer.innerHTML += `
+           <div id="${tempId}" class="chat-message-item" style="display: flex; flex-direction: column; align-items: flex-end; max-width: 80%; align-self: flex-end; opacity: 0.5;">
+              <span style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px; padding: 0 4px;">You • Uploading...</span>
+              <div style="background: var(--accent); color: #fff; padding: 12px 16px; border-radius: 16px; font-size: 14px;">
+                 📎 ${file.name}
+              </div>
+           </div>
+        `;
+        msgContainer.scrollTop = msgContainer.scrollHeight;
+    }
+
     try {
-        const fileRef = ref(storage, `companies/${company}/chat/${Date.now()}_${file.name}`);
-        await uploadBytes(fileRef, file);
+        let fileToUpload = file;
+        if (file.type.startsWith('image/')) {
+            fileToUpload = await compressImage(file);
+        }
+
+        const fileRef = ref(storage, `companies/${company}/chat/${Date.now()}_${fileToUpload.name}`);
+        await uploadBytes(fileRef, fileToUpload);
         const url = await getDownloadURL(fileRef);
 
         const isImage = file.type.startsWith('image/');
@@ -256,6 +311,8 @@ async function uploadFileAndSend(file, user, company) {
     } finally {
         attachBtn.innerHTML = originalText;
         attachBtn.disabled = false;
+        const tempEl = document.getElementById(tempId);
+        if (tempEl) tempEl.remove();
     }
 }
 
@@ -300,8 +357,12 @@ function showInviteModal(currentUser) {
                 const invitedUserDoc = qs.docs[0];
                 const invitedUser = invitedUserDoc.data();
                 
-                // Update user's company
-                invitedUser.company = currentUser.company;
+                // Update user's companies array
+                if (!invitedUser.companies) invitedUser.companies = [invitedUser.company];
+                if (!invitedUser.companies.includes(currentChatCompany)) {
+                    invitedUser.companies.push(currentChatCompany);
+                }
+                
                 await setDoc(doc(db, 'users', invitedUser.id), invitedUser);
                 
                 showToast(`Successfully added ${invitedUser.name} to ${currentUser.company}!`, 'success');
@@ -323,4 +384,44 @@ function escapeHtml(unsafe) {
          .replace(/>/g, "&gt;")
          .replace(/"/g, "&quot;")
          .replace(/'/g, "&#039;");
+}
+
+function compressImage(file, maxWidth = 1200, quality = 0.7) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = event => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob(blob => {
+                    if (!blob) {
+                        resolve(file); // Fallback
+                        return;
+                    }
+                    const newFile = new File([blob], file.name, {
+                        type: 'image/jpeg',
+                        lastModified: Date.now()
+                    });
+                    resolve(newFile);
+                }, 'image/jpeg', quality);
+            };
+            img.onerror = () => resolve(file); // Fallback
+        };
+        reader.onerror = () => resolve(file); // Fallback
+    });
 }
