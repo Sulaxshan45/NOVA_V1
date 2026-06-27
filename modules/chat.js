@@ -542,7 +542,7 @@ function handleImportProjectShared(data) {
             console.error(err);
             showToast("Failed to import project data.", "error");
         }
-    }, 'Import', 'btn-primary');
+    }, 'Import', 'btn-primary', '📥');
 }
 
 // ============================================================
