@@ -9,7 +9,7 @@ import { renderGantt } from './modules/gantt.js';
 import { renderBilling } from './modules/billing.js';
 import { renderDashboard } from './modules/dashboard.js';
 import { renderExpenses } from './modules/expenses.js';
-import { renderChat } from './modules/chat.js';
+import { renderChat } from './modules/chat.js?v=2';
 import { getSettings, saveSettings, getProjects, saveProjects, getTasks, saveTasks, getMaterials, saveMaterials, exportAllData, importAllData, loadWorkspaceFromServer, clearLocalSessionCache } from './utils/storage.js';
 import { formatDate } from './utils/helpers.js';
 import { openModal, closeModal, showToast, showConfirm } from './utils/ui.js';
