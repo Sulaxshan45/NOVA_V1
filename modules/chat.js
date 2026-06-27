@@ -514,12 +514,20 @@ function showShareProjectModal() {
 }
 
 function handleImportProjectShared(data) {
+    const allP = getProjects();
+    const alreadyImported = allP.find(p => p.importedFromId === data.project.id || p.id === data.project.id);
+    
+    if (alreadyImported) {
+        showToast("You have already imported this project.", "info");
+        return;
+    }
+
     showConfirm(`Do you want to import "${data.project.name}" into your workspace? This will save a local copy that you can edit.`, () => {
         try {
             // Generate a new ID for the project so it doesn't collide if they re-import
             const newProjectId = 'proj_' + Date.now();
             
-            const p = { ...data.project, id: newProjectId, name: data.project.name + ' (Imported)' };
+            const p = { ...data.project, id: newProjectId, name: data.project.name + ' (Imported)', importedFromId: data.project.id };
             
             const t = data.tasks.map(task => ({
                 ...task, 
