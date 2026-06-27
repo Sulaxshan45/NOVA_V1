@@ -194,7 +194,7 @@ function initChatListListener() {
     if (unsubChatList) unsubChatList();
     
     const chatsRef = collection(db, 'chats');
-    const q = query(chatsRef, where('participants', 'array-contains', currentUser.id), orderBy('lastUpdated', 'desc'));
+    const q = query(chatsRef, where('participants', 'array-contains', currentUser.id));
     
     unsubChatList = onSnapshot(q, async (snapshot) => {
         const listContainer = document.getElementById('chat-list');
@@ -205,7 +205,13 @@ function initChatListListener() {
             return;
         }
 
-        const chatsHtmlPromises = snapshot.docs.map(async docSnapshot => {
+        const sortedDocs = [...snapshot.docs].sort((a, b) => {
+            const timeA = a.data().lastUpdated ? a.data().lastUpdated.toMillis() : 0;
+            const timeB = b.data().lastUpdated ? b.data().lastUpdated.toMillis() : 0;
+            return timeB - timeA;
+        });
+
+        const chatsHtmlPromises = sortedDocs.map(async docSnapshot => {
             const chat = docSnapshot.data();
             chat.id = docSnapshot.id;
             
@@ -628,8 +634,8 @@ function showAddFriendModal() {
                 await addDoc(collection(db, 'friend_requests'), {
                     from: {
                         id: currentUser.id,
-                        name: currentUser.name,
-                        novdId: currentUser.novdId,
+                        name: currentUser.name || 'Unknown User',
+                        novdId: currentUser.novdId || '00000',
                         picture: currentUser.picture || ''
                     },
                     to: targetUser.id,
