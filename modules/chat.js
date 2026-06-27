@@ -515,7 +515,12 @@ function showShareProjectModal() {
 
 function handleImportProjectShared(data) {
     const allP = getProjects();
-    const alreadyImported = allP.find(p => p.importedFromId === data.project.id || p.id === data.project.id);
+    const importedName = data.project.name + ' (Imported)';
+    const alreadyImported = allP.find(p => 
+        p.importedFromId === data.project.id || 
+        p.id === data.project.id ||
+        p.name === importedName
+    );
     
     if (alreadyImported) {
         showToast("You have already imported this project.", "info");
