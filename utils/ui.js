@@ -61,10 +61,10 @@ export function showToast(message, type = 'success') {
 // ============================================================
 // CONFIRM DIALOG
 // ============================================================
-export function showConfirm(message, onConfirm, confirmText = 'Delete', confirmClass = 'btn-danger') {
+export function showConfirm(message, onConfirm, confirmText = 'Delete', confirmClass = 'btn-danger', icon = '⚠️') {
   const formHtml = `
     <div class="confirm-body">
-      <div class="confirm-icon">⚠️</div>
+      <div class="confirm-icon" ${icon !== '⚠️' ? 'style="color:var(--primary);"' : ''}>${icon}</div>
       <p class="confirm-message">${message}</p>
       <div class="modal-footer" style="justify-content:center;gap:16px">
         <button class="btn btn-ghost" id="confirm-cancel">Cancel</button>
