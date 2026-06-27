@@ -597,7 +597,9 @@ function showAddFriendModal() {
                     return;
                 }
                 
-                const targetUser = qs.docs[0].data();
+                const targetUserDoc = qs.docs[0];
+                const targetUser = targetUserDoc.data();
+                targetUser.id = targetUserDoc.id;
                 
                 // Check if already friends
                 if (currentUser.friends && currentUser.friends.includes(targetUser.id)) {
@@ -607,9 +609,16 @@ function showAddFriendModal() {
                 }
 
                 // Check if request already exists
-                const reqQ = query(collection(db, 'friend_requests'), where('from.id', '==', currentUser.id), where('to', '==', targetUser.id), where('status', '==', 'pending'));
+                const reqQ = query(collection(db, 'friend_requests'), where('from.id', '==', currentUser.id));
                 const reqQS = await getDocs(reqQ);
-                if (!reqQS.empty) {
+                let alreadySent = false;
+                reqQS.forEach(doc => {
+                    if (doc.data().to === targetUser.id && doc.data().status === 'pending') {
+                        alreadySent = true;
+                    }
+                });
+                
+                if (alreadySent) {
                     showToast('Request already sent!', 'info');
                     closeModal();
                     return;
@@ -650,15 +659,17 @@ async function showFriendRequestsModal() {
 
     const container = document.getElementById('requests-list-container');
     try {
-        const q = query(collection(db, 'friend_requests'), where('to', '==', currentUser.id), where('status', '==', 'pending'));
+        const q = query(collection(db, 'friend_requests'), where('to', '==', currentUser.id));
         const qs = await getDocs(q);
         
-        if (qs.empty) {
+        const pendingReqs = qs.docs.filter(doc => doc.data().status === 'pending');
+        
+        if (pendingReqs.length === 0) {
             container.innerHTML = `<div style="text-align:center; color: var(--text-muted); padding:20px;">No pending requests.</div>`;
             return;
         }
 
-        container.innerHTML = qs.docs.map(doc => {
+        container.innerHTML = pendingReqs.map(doc => {
             const req = doc.data();
             return `
             <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--bg-body); border-radius: 8px; border: 1px solid var(--border);">
