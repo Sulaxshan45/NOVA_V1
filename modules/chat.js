@@ -864,14 +864,16 @@ async function showChatInfoModal() {
     `;
 
     if (isGroup) {
-        html += `<div style="margin-bottom:12px; font-weight:bold; font-size:14px; border-bottom:1px solid var(--border); padding-bottom:8px;">Group Members</div>`;
-        html += `<div id="group-info-members-list" style="display:flex; flex-direction:column; gap:8px; max-height:200px; overflow-y:auto; margin-bottom:24px;"><div style="text-align:center; color:var(--text-muted);">Loading members...</div></div>`;
-        
-        const amIAdmin = currentChatData.admins && currentChatData.admins.includes(currentUser.id);
         const amIMainAdmin = currentChatData.mainAdmin === currentUser.id;
         const isLegacyGroup = !currentChatData.mainAdmin && !currentChatData.admins;
 
-        if (amIAdmin || amIMainAdmin || isLegacyGroup) {
+        html += `<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:12px;">
+                    <div style="font-weight:bold; font-size:14px;">Group Members</div>
+                    ${(amIMainAdmin || isLegacyGroup) ? `<button class="btn btn-ghost" id="btn-add-group-member" style="font-size:12px; padding:4px 8px; color:var(--primary);">➕ Add</button>` : ''}
+                 </div>`;
+        html += `<div id="group-info-members-list" style="display:flex; flex-direction:column; gap:8px; max-height:200px; overflow-y:auto; margin-bottom:24px;"><div style="text-align:center; color:var(--text-muted);">Loading members...</div></div>`;
+        
+        if (amIMainAdmin || isLegacyGroup) {
             html += `
                 <div style="border-top:1px solid var(--border); padding-top:16px; text-align:center;">
                     <button class="btn btn-primary" id="btn-delete-group" style="background:var(--status-red); border-color:var(--status-red); width:100%;">Delete Group</button>
@@ -883,6 +885,14 @@ async function showChatInfoModal() {
     openModal(isGroup ? 'Group Info' : 'Contact Info', html);
 
     if (isGroup) {
+        const amIMainAdmin = currentChatData.mainAdmin === currentUser.id;
+        const isLegacyGroup = !currentChatData.mainAdmin && !currentChatData.admins;
+        
+        document.getElementById('btn-add-group-member')?.addEventListener('click', () => {
+            closeModal();
+            showAddGroupMemberModal();
+        });
+
         const listDiv = document.getElementById('group-info-members-list');
         try {
             const memberPromises = currentChatData.participants.map(pid => getDoc(doc(db, 'users', pid)));
@@ -891,15 +901,14 @@ async function showChatInfoModal() {
             listDiv.innerHTML = memberSnaps.filter(s => s.exists()).map(snap => {
                 const u = snap.data();
                 const isMainAdmin = currentChatData.mainAdmin === u.id;
-                const isAdmin = currentChatData.admins && currentChatData.admins.includes(u.id);
                 
                 let badge = '';
-                if (isMainAdmin) badge = `<span style="font-size:10px; background:rgba(234,179,8,0.2); color:#eab308; padding:2px 6px; border-radius:4px; font-weight:bold;">Creator</span>`;
-                else if (isAdmin) badge = `<span style="font-size:10px; background:rgba(59,130,246,0.2); color:#3b82f6; padding:2px 6px; border-radius:4px; font-weight:bold;">Admin</span>`;
+                if (isMainAdmin) badge = `<span style="font-size:10px; background:rgba(34,197,94,0.2); color:#22c55e; padding:2px 6px; border-radius:4px; font-weight:bold;">Admin</span>`;
+                else if (isLegacyGroup && u.id === currentChatData.participants[0]) badge = `<span style="font-size:10px; background:rgba(34,197,94,0.2); color:#22c55e; padding:2px 6px; border-radius:4px; font-weight:bold;">Admin</span>`;
                 
                 let actions = '';
-                if (currentChatData.mainAdmin === currentUser.id && !isAdmin) {
-                    actions = `<button class="btn btn-ghost btn-make-admin" data-uid="${u.id}" style="padding:2px 6px; font-size:11px;">Make Admin</button>`;
+                if ((amIMainAdmin || isLegacyGroup) && u.id !== currentUser.id) {
+                    actions = `<button class="btn btn-ghost btn-remove-member" data-uid="${u.id}" style="padding:2px 6px; font-size:11px; color:var(--status-red);">Remove</button>`;
                 }
 
                 return `
@@ -915,20 +924,30 @@ async function showChatInfoModal() {
                 `;
             }).join('');
 
-            document.querySelectorAll('.btn-make-admin').forEach(btn => {
+            document.querySelectorAll('.btn-remove-member').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     const uid = e.currentTarget.dataset.uid;
-                    if (confirm('Are you sure you want to make this user an admin?')) {
+                    if (confirm('Are you sure you want to remove this member?')) {
                         try {
                             await updateDoc(doc(db, 'chats', currentChatId), {
-                                admins: arrayUnion(uid)
+                                participants: arrayRemove(uid)
                             });
-                            showToast('User promoted to admin', 'success');
-                            currentChatData.admins.push(uid);
+                            showToast('Member removed', 'success');
+                            
+                            // Send system message
+                            await addDoc(collection(db, 'chats', currentChatId, 'messages'), {
+                                text: `${currentUser.name} removed a member.`,
+                                senderId: 'system',
+                                senderName: 'System',
+                                createdAt: serverTimestamp(),
+                                msgType: 'system'
+                            });
+
+                            currentChatData.participants = currentChatData.participants.filter(p => p !== uid);
                             closeModal();
                             setTimeout(showChatInfoModal, 100);
                         } catch (err) {
-                            showToast('Failed to promote user', 'error');
+                            showToast('Failed to remove member', 'error');
                         }
                     }
                 });
@@ -962,6 +981,80 @@ async function showChatInfoModal() {
             });
         }
     }
+}
+
+async function showAddGroupMemberModal() {
+    let html = `
+        <div style="margin-bottom:16px; color:var(--text-muted); font-size:14px;">Select friends to add to the group.</div>
+        <div id="add-member-list" style="display:flex; flex-direction:column; gap:8px; max-height:250px; overflow-y:auto; margin-bottom:16px;">
+            <div style="text-align:center;">Loading...</div>
+        </div>
+        <button class="btn btn-primary" id="btn-confirm-add-members" style="width:100%;">Add Selected</button>
+    `;
+    openModal('Add Members', html);
+
+    const listDiv = document.getElementById('add-member-list');
+    try {
+        const friendsPromises = currentUser.friends.map(fid => getDoc(doc(db, 'users', fid)));
+        const friendsSnaps = await Promise.all(friendsPromises);
+        
+        // Filter out friends who are already in the group
+        const availableFriends = friendsSnaps.filter(s => s.exists() && !currentChatData.participants.includes(s.id));
+        
+        if (availableFriends.length === 0) {
+            listDiv.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-muted);">All your friends are already in this group, or you have no friends to add.</div>`;
+            document.getElementById('btn-confirm-add-members').style.display = 'none';
+            return;
+        }
+
+        listDiv.innerHTML = availableFriends.map(snap => {
+            const f = snap.data();
+            return `
+                <label style="display:flex; align-items:center; gap:12px; padding:8px; cursor:pointer; border-radius:6px; background:var(--bg-body); border:1px solid var(--border);">
+                    <input type="checkbox" class="add-member-cb" value="${f.id}" style="width:16px; height:16px;" />
+                    <img src="${f.picture || 'https://via.placeholder.com/32'}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;">
+                    <div style="font-weight:500; font-size:14px;">${escapeHtml(f.name)}</div>
+                </label>
+            `;
+        }).join('');
+    } catch (err) {
+        listDiv.innerHTML = `<div style="color:var(--status-red); text-align:center;">Failed to load friends.</div>`;
+    }
+
+    document.getElementById('btn-confirm-add-members')?.addEventListener('click', async () => {
+        const selectedIds = Array.from(document.querySelectorAll('.add-member-cb:checked')).map(cb => cb.value);
+        if (selectedIds.length === 0) { showToast('Select at least one friend', 'error'); return; }
+
+        const btn = document.getElementById('btn-confirm-add-members');
+        btn.innerHTML = 'Adding...';
+        btn.disabled = true;
+
+        try {
+            // Can't use arrayUnion with an array directly, must spread or do one by one.
+            // In firebase v10, arrayUnion(...selectedIds) works.
+            await updateDoc(doc(db, 'chats', currentChatId), {
+                participants: arrayUnion(...selectedIds)
+            });
+            
+            await addDoc(collection(db, 'chats', currentChatId, 'messages'), {
+                text: `${currentUser.name} added new members.`,
+                senderId: 'system',
+                senderName: 'System',
+                createdAt: serverTimestamp(),
+                msgType: 'system'
+            });
+
+            currentChatData.participants.push(...selectedIds);
+            showToast('Members added successfully', 'success');
+            closeModal();
+            setTimeout(showChatInfoModal, 100);
+        } catch (err) {
+            console.error(err);
+            showToast('Failed to add members', 'error');
+            btn.innerHTML = 'Add Selected';
+            btn.disabled = false;
+        }
+    });
 }
 
 function escapeHtml(unsafe) {
