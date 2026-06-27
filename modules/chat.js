@@ -542,7 +542,7 @@ function handleImportProjectShared(data) {
             console.error(err);
             showToast("Failed to import project data.", "error");
         }
-    });
+    }, 'Import', 'btn-primary');
 }
 
 // ============================================================
@@ -869,8 +869,9 @@ async function showChatInfoModal() {
         
         const amIAdmin = currentChatData.admins && currentChatData.admins.includes(currentUser.id);
         const amIMainAdmin = currentChatData.mainAdmin === currentUser.id;
+        const isLegacyGroup = !currentChatData.mainAdmin && !currentChatData.admins;
 
-        if (amIAdmin || amIMainAdmin) {
+        if (amIAdmin || amIMainAdmin || isLegacyGroup) {
             html += `
                 <div style="border-top:1px solid var(--border); padding-top:16px; text-align:center;">
                     <button class="btn btn-primary" id="btn-delete-group" style="background:var(--status-red); border-color:var(--status-red); width:100%;">Delete Group</button>
