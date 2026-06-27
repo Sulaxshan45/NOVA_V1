@@ -27,7 +27,10 @@ export function renderInventory() {
         <h2 class="section-title">📦 Inventory</h2>
         <p class="section-subtitle">${materials.length} material${materials.length !== 1 ? 's' : ''} · ${project.name}</p>
       </div>
-      <button class="btn btn-primary" id="btn-new-material">+ Add Material</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="window.preparePrint('Inventory Report')">🖨️ Print PDF</button>
+        <button class="btn btn-primary" id="btn-new-material">+ Add Material</button>
+      </div>
     </div>
 
     ${materials.length === 0 ? `

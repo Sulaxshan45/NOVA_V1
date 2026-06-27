@@ -2,8 +2,8 @@
 // gantt.js — Custom HTML Gantt Chart (no external libraries)
 // ============================================================
 
-import { getTaskEndDate, getStatusColor, formatDate, escapeHtml } from '../utils/helpers.js';
-import { getTasks } from '../utils/storage.js';
+import { getTaskEndDate, getStatusColor, getStatusClass, formatDate, escapeHtml } from '../utils/helpers.js';
+import { getTasks, saveTasks } from '../utils/storage.js';
 import { getActiveProject } from './projects.js';
 
 export function renderGantt() {
@@ -23,6 +23,7 @@ export function renderGantt() {
         <h2 class="section-title">📊 Gantt Chart</h2>
         <p class="section-subtitle">${tasks.length} task${tasks.length !== 1 ? 's' : ''} · ${project.name}</p>
       </div>
+      <button class="btn btn-ghost" onclick="window.preparePrint('Gantt Chart')">🖨️ Print PDF</button>
     </div>
     <div class="gantt-legend">
       <span class="legend-item"><span class="legend-dot" style="background:#22c55e"></span>Completed</span>
@@ -121,8 +122,11 @@ function buildGanttChart(tasks, wrapper) {
           return `
             <div class="gantt-task-row ${rowIdx % 2 === 0 ? 'gantt-row-even' : ''}" style="display:flex;height:${ROW_H}px;position:relative">
               <div class="gantt-label-col" style="min-width:${LABEL_W}px;max-width:${LABEL_W}px;align-items:center;display:flex;gap:6px;padding:0 8px;overflow:hidden">
-                <span class="gantt-task-dot" style="background:${color}"></span>
-                <span class="gantt-task-label" title="${escapeHtml(task.name)}">${escapeHtml(task.name)}</span>
+                <span class="gantt-task-dot" style="background:${color}; flex-shrink:0;"></span>
+                <span class="gantt-task-label" title="${escapeHtml(task.name)}" style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(task.name)}</span>
+                <select class="form-select gantt-status-select ${getStatusClass(task.status)}" data-task-id="${task.id}" style="padding: 0 16px 0 6px; font-size: 9px; height: 18px; border-radius: 9px; font-weight: 600; cursor: pointer; outline: none; -webkit-appearance: none; appearance: none; background-position: right 4px center; background-size: 8px; width:auto; min-width:70px; flex-shrink:0;">
+                  ${['Pending', 'In Progress', 'Completed', 'On Hold'].map(s => `<option value="${s}" ${task.status === s ? 'selected' : ''} style="color:var(--text); background:var(--bg-body);">${s}</option>`).join('')}
+                </select>
               </div>
               <div style="position:relative;flex:1;min-width:${totalDays * CELL_W}px">
                 <!-- Today line -->
@@ -151,6 +155,21 @@ function buildGanttChart(tasks, wrapper) {
   `;
 
   wrapper.innerHTML = html;
+
+  // Bind change events for inline status editing
+  wrapper.querySelectorAll('.gantt-status-select').forEach(select => {
+    select.addEventListener('change', (e) => {
+      const taskId = e.target.dataset.taskId;
+      const newStatus = e.target.value;
+      const allTasks = getTasks();
+      const taskIndex = allTasks.findIndex(t => t.id === taskId);
+      if (taskIndex > -1) {
+        allTasks[taskIndex].status = newStatus;
+        saveTasks(allTasks);
+        renderGantt(); // re-render to update colors
+      }
+    });
+  });
 }
 
 // Mini Gantt for dashboard preview (first N tasks, compact)

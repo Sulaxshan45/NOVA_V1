@@ -144,17 +144,17 @@ function openProjectModal(editIdOrEvent) {
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Mason Rate (Rs./mason/day)</label>
-          <input id="pf-masonrate" class="form-input" type="number" min="0" placeholder="2500" value="${project ? project.masonRate || '' : ''}">
+          <label class="form-label">Mason Rate (Rs./mason/day) *</label>
+          <input id="pf-masonrate" class="form-input" type="number" min="0" placeholder="2500" required value="${project ? project.masonRate || '' : ''}">
         </div>
         <div class="form-group">
-          <label class="form-label">Labour Rate (Rs./labourer/day)</label>
-          <input id="pf-labourrate" class="form-input" type="number" min="0" placeholder="1500" value="${project ? project.labourRate || '' : ''}">
+          <label class="form-label">Labour Rate (Rs./labourer/day) *</label>
+          <input id="pf-labourrate" class="form-input" type="number" min="0" placeholder="1500" required value="${project ? project.labourRate || '' : ''}">
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Profit Margin (%)</label>
-        <input id="pf-profit" class="form-input" type="number" min="0" max="100" placeholder="15" value="${project ? project.profitMargin || '' : ''}">
+        <label class="form-label">Profit Margin (%) *</label>
+        <input id="pf-profit" class="form-input" type="number" min="0" max="100" placeholder="15" required value="${project ? project.profitMargin || '' : ''}">
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" id="modal-cancel">Cancel</button>

@@ -24,7 +24,10 @@ export function renderTasks() {
         <h2 class="section-title">✅ Tasks</h2>
         <p class="section-subtitle">${tasks.length} task${tasks.length !== 1 ? 's' : ''} · ${project.name}</p>
       </div>
-      <button class="btn btn-primary" id="btn-new-task">+ Add Task</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="window.preparePrint('Task Schedule')">🖨️ Print PDF</button>
+        <button class="btn btn-primary" id="btn-new-task">+ Add Task</button>
+      </div>
     </div>
 
     ${tasks.length === 0 ? `
@@ -67,6 +70,20 @@ export function renderTasks() {
   container.querySelectorAll('[data-manage-materials]').forEach(btn =>
     btn.addEventListener('click', () => openMaterialsModal(btn.dataset.manageMaterials, project))
   );
+
+  container.querySelectorAll('.status-inline-select').forEach(select => {
+    select.addEventListener('change', (e) => {
+      const taskId = e.target.dataset.taskId;
+      const newStatus = e.target.value;
+      const allTasks = getTasks();
+      const taskIndex = allTasks.findIndex(t => t.id === taskId);
+      if (taskIndex > -1) {
+        allTasks[taskIndex].status = newStatus;
+        saveTasks(allTasks);
+        renderTasks();
+      }
+    });
+  });
 }
 
 function renderTaskRow(t) {
@@ -80,7 +97,11 @@ function renderTaskRow(t) {
       <td>${formatDate(endDate)}</td>
       <td>${t.masons || 0}</td>
       <td>${t.labourers || 0}</td>
-      <td><span class="status-badge ${getStatusClass(t.status)}">${t.status}</span></td>
+      <td>
+        <select class="form-select status-inline-select ${getStatusClass(t.status)}" data-task-id="${t.id}" style="padding: 2px 24px 2px 8px; font-size: 11px; height: 24px; border-radius: 12px; font-weight: 600; cursor: pointer; outline: none; -webkit-appearance: none; appearance: none; background-position: right 6px center; background-size: 10px;">
+          ${STATUSES.map(s => `<option value="${s}" ${t.status === s ? 'selected' : ''} style="color:var(--text); background:var(--bg-body);">${s}</option>`).join('')}
+        </select>
+      </td>
       <td>
         <button class="btn btn-ghost btn-xs" data-manage-materials="${t.id}">
           📦 ${matCount > 0 ? matCount + ' linked' : 'Link'}

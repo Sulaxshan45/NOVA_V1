@@ -27,7 +27,10 @@ export function renderExpenses() {
         <h2 class="section-title">💸 Additional Expenses</h2>
         <p class="section-subtitle">${expenses.length} expense item${expenses.length !== 1 ? 's' : ''} · ${project.name}</p>
       </div>
-      <button class="btn btn-primary" id="btn-new-expense">+ Add Expense</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="window.preparePrint('Additional Expenses Report')">🖨️ Print PDF</button>
+        <button class="btn btn-primary" id="btn-new-expense">+ Add Expense</button>
+      </div>
     </div>
 
     ${expenses.length === 0 ? `

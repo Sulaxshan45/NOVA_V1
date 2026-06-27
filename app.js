@@ -55,12 +55,23 @@ function updateSidebarUser() {
   const nameEl = document.getElementById('topbar-username');
   const emailEl = document.getElementById('topbar-email');
   const companyEl = document.getElementById('topbar-company');
+  const novdEl = document.getElementById('topbar-novdid');
 
   if (currentUser && topbarUser) {
     topbarUser.style.display = 'flex';
     if (avatarEl) avatarEl.src = currentUser.picture || 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&h=150&q=80';
     if (nameEl) nameEl.textContent = currentUser.name || 'User';
     if (emailEl) emailEl.textContent = currentUser.email || '';
+    
+    if (novdEl) {
+      if (currentUser.novdId) {
+        novdEl.textContent = `NOVD ID: ${currentUser.novdId}`;
+        novdEl.style.display = 'inline-block';
+      } else {
+        novdEl.style.display = 'none';
+      }
+    }
+
     if (companyEl) {
       const parts = [];
       if (currentUser.designation) parts.push(currentUser.designation);
@@ -257,16 +268,7 @@ function renderSettings() {
         </div>
       </div>
 
-      <!-- App Info -->
-      <div class="glass-card">
-        <h3 class="card-title">ℹ️ App Info</h3>
-        <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px">
-          <div class="info-row"><span>Version</span><span>1.0.0</span></div>
-          <div class="info-row"><span>Projects</span><span>${getProjects().length}</span></div>
-          <div class="info-row"><span>Storage</span><span>localStorage</span></div>
-          <div class="info-row"><span>Built with</span><span>Vanilla JS</span></div>
-        </div>
-      </div>
+
     </div>
   `;
 
@@ -697,14 +699,25 @@ function showProfileSetup(prefillName, prefillEmail, prefillPicture, onComplete)
           return;
         }
 
+        // Generate unique NOVD ID
+        let novdId = '';
+        let isUnique = false;
+        while (!isUnique) {
+            novdId = Math.floor(10000 + Math.random() * 90000).toString();
+            const idQuery = query(collection(db, 'users'), where('novdId', '==', novdId));
+            const idQs = await getDocs(idQuery);
+            if (idQs.empty) isUnique = true;
+        }
+
         closeModal();
-        onComplete(name, username, designation, company, uploadedPictureBase64);
+        onComplete(name, username, designation, company, uploadedPictureBase64, novdId);
       } catch (err) {
         console.warn('Firestore check error (proceeding anyway):', err);
         // If Firestore is unavailable/not enabled, skip the uniqueness check
         // and allow the user to log in — Firestore will be checked once enabled
+        let novdId = Math.floor(10000 + Math.random() * 90000).toString();
         closeModal();
-        onComplete(name, username, designation, company, uploadedPictureBase64);
+        onComplete(name, username, designation, company, uploadedPictureBase64, novdId);
       }
     };
 
@@ -771,9 +784,10 @@ async function handleFirebaseAuth(firebaseUser) {
     };
 
     closeModal();
-    showProfileSetup(profile.name, profile.email, profile.picture, async (name, username, designation, company, picture) => {
+    showProfileSetup(profile.name, profile.email, profile.picture, async (name, username, designation, company, picture, novdId) => {
       const user = {
         id: userId,
+        novdId: novdId,
         name: name,
         username: username,
         designation: designation,
@@ -947,10 +961,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Guest Sign In Button
   document.getElementById('btn-login-guest')?.addEventListener('click', () => {
-    showProfileSetup('', '', '', async (name, username, designation, company, picture) => {
+    showProfileSetup('', '', '', async (name, username, designation, company, picture, novdId) => {
       const guestId = `guest_${Math.random().toString(36).substring(2, 11)}`;
       const user = {
         id: guestId,
+        novdId: novdId,
         name: name,
         username: username,
         designation: designation,
@@ -1082,3 +1097,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.navigateTo(project ? 'dashboard' : 'projects');
   }
 });
+
+// ============================================================
+// PDF PRINTING HELPER
+// ============================================================
+window.preparePrint = function(docTitle) {
+  const settings = getSettings();
+  const companyName = settings.companyName || 'NOVA Construction';
+  const activeProjectId = getActiveProjectId();
+  const projects = getProjects();
+  const project = projects.find(p => p.id === activeProjectId);
+  const projectName = project ? project.name : 'Global View';
+
+  const titleEl = document.getElementById('print-document-title');
+  const compEl = document.getElementById('print-company-name');
+  const projEl = document.getElementById('print-project-name');
+
+  if(compEl) compEl.textContent = companyName;
+  if(projEl) projEl.textContent = projectName;
+  if(titleEl) titleEl.textContent = docTitle;
+
+  window.print();
+};

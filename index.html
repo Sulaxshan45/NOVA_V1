@@ -10,7 +10,6 @@
   <!-- Preconnect for fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-
   <!-- App Stylesheet -->
   <link rel="stylesheet" href="style.css?v=5" />
 
@@ -29,6 +28,12 @@
   <link rel="icon" href="logo.png" />
 </head>
 <body>
+  <!-- Print Letterhead (Hidden by default, shown in @media print) -->
+  <div id="official-print-header" style="display:none; text-align:center; padding-bottom:20px; border-bottom:2px solid #000; margin-bottom:20px;">
+      <h1 id="print-company-name" style="margin:0; font-size:24px; text-transform:uppercase;"></h1>
+      <h2 id="print-project-name" style="margin:4px 0; font-size:18px; color:#555;"></h2>
+      <h3 id="print-document-title" style="margin:4px 0 0 0; font-size:16px; font-weight:normal;"></h3>
+  </div>
 
 <!-- ======================================================
      LOGIN SCREEN
@@ -160,7 +165,7 @@
 
 
     <div class="sidebar-footer">
-      NOVA v1.0 · Built for SMEs
+      NOVA v1.0
     </div>
   </aside>
 
@@ -197,6 +202,7 @@
             <div class="user-dropdown-info">
               <div class="user-dropdown-name" id="topbar-username">Guest</div>
               <div class="user-dropdown-company" id="topbar-company" style="display:none;font-size:11px;font-weight:600;color:var(--accent);margin-top:2px;letter-spacing:0.3px;"></div>
+              <div class="user-dropdown-novdid" id="topbar-novdid" style="display:none;font-size:11px;font-family:monospace;font-weight:bold;color:var(--status-green);background:rgba(16,185,129,0.1);padding:2px 6px;border-radius:4px;margin-top:4px;align-self:flex-start;"></div>
               <div class="user-dropdown-email" id="topbar-email">guest@nova.com</div>
             </div>
             <div class="dropdown-divider"></div>
