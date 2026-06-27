@@ -1,5 +1,5 @@
 import { db, storage } from '../utils/firebase.js';
-import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, getDocs, doc, setDoc, getDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, getDocs, doc, setDoc, getDoc, updateDoc, arrayUnion, deleteDoc, arrayRemove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 import { openModal, closeModal, showToast, showConfirm } from '../utils/ui.js';
@@ -506,7 +506,7 @@ function showShareProjectModal() {
             const tasks = getTasks().filter(t => t.projectId === pid);
             const materials = getMaterials().filter(m => m.projectId === pid);
 
-            const payload = { project, tasks, materials };
+            const payload = JSON.parse(JSON.stringify({ project, tasks, materials }));
             closeModal();
             sendMessage('', 'project_data', { projectData: payload });
         });
@@ -824,6 +824,8 @@ async function showCreateGroupModal() {
                 type: 'group',
                 groupName: name,
                 participants: participants,
+                mainAdmin: currentUser.id,
+                admins: [currentUser.id],
                 lastMessage: 'Group created',
                 lastUpdated: serverTimestamp()
             });
@@ -849,7 +851,7 @@ async function showCreateGroupModal() {
     });
 }
 
-function showChatInfoModal() {
+async function showChatInfoModal() {
     if (!currentChatData) return;
     const isGroup = currentChatData.type === 'group';
     
@@ -861,7 +863,104 @@ function showChatInfoModal() {
         </div>
     `;
 
+    if (isGroup) {
+        html += `<div style="margin-bottom:12px; font-weight:bold; font-size:14px; border-bottom:1px solid var(--border); padding-bottom:8px;">Group Members</div>`;
+        html += `<div id="group-info-members-list" style="display:flex; flex-direction:column; gap:8px; max-height:200px; overflow-y:auto; margin-bottom:24px;"><div style="text-align:center; color:var(--text-muted);">Loading members...</div></div>`;
+        
+        const amIAdmin = currentChatData.admins && currentChatData.admins.includes(currentUser.id);
+        const amIMainAdmin = currentChatData.mainAdmin === currentUser.id;
+
+        if (amIAdmin || amIMainAdmin) {
+            html += `
+                <div style="border-top:1px solid var(--border); padding-top:16px; text-align:center;">
+                    <button class="btn btn-primary" id="btn-delete-group" style="background:var(--status-red); border-color:var(--status-red); width:100%;">Delete Group</button>
+                </div>
+            `;
+        }
+    }
+
     openModal(isGroup ? 'Group Info' : 'Contact Info', html);
+
+    if (isGroup) {
+        const listDiv = document.getElementById('group-info-members-list');
+        try {
+            const memberPromises = currentChatData.participants.map(pid => getDoc(doc(db, 'users', pid)));
+            const memberSnaps = await Promise.all(memberPromises);
+            
+            listDiv.innerHTML = memberSnaps.filter(s => s.exists()).map(snap => {
+                const u = snap.data();
+                const isMainAdmin = currentChatData.mainAdmin === u.id;
+                const isAdmin = currentChatData.admins && currentChatData.admins.includes(u.id);
+                
+                let badge = '';
+                if (isMainAdmin) badge = `<span style="font-size:10px; background:rgba(234,179,8,0.2); color:#eab308; padding:2px 6px; border-radius:4px; font-weight:bold;">Creator</span>`;
+                else if (isAdmin) badge = `<span style="font-size:10px; background:rgba(59,130,246,0.2); color:#3b82f6; padding:2px 6px; border-radius:4px; font-weight:bold;">Admin</span>`;
+                
+                let actions = '';
+                if (currentChatData.mainAdmin === currentUser.id && !isAdmin) {
+                    actions = `<button class="btn btn-ghost btn-make-admin" data-uid="${u.id}" style="padding:2px 6px; font-size:11px;">Make Admin</button>`;
+                }
+
+                return `
+                    <div style="display:flex; align-items:center; justify-content:space-between; padding:8px; background:var(--bg-body); border-radius:6px; border:1px solid var(--border);">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <img src="${u.picture || 'https://via.placeholder.com/32'}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;">
+                            <div>
+                                <div style="font-weight:500; font-size:14px; display:flex; align-items:center; gap:8px;">${escapeHtml(u.name)} ${badge}</div>
+                            </div>
+                        </div>
+                        <div>${actions}</div>
+                    </div>
+                `;
+            }).join('');
+
+            document.querySelectorAll('.btn-make-admin').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const uid = e.currentTarget.dataset.uid;
+                    if (confirm('Are you sure you want to make this user an admin?')) {
+                        try {
+                            await updateDoc(doc(db, 'chats', currentChatId), {
+                                admins: arrayUnion(uid)
+                            });
+                            showToast('User promoted to admin', 'success');
+                            currentChatData.admins.push(uid);
+                            closeModal();
+                            setTimeout(showChatInfoModal, 100);
+                        } catch (err) {
+                            showToast('Failed to promote user', 'error');
+                        }
+                    }
+                });
+            });
+
+        } catch (err) {
+            listDiv.innerHTML = `<div style="color:var(--status-red); text-align:center;">Failed to load members</div>`;
+        }
+
+        const deleteBtn = document.getElementById('btn-delete-group');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', async () => {
+                if (confirm('Are you absolutely sure you want to delete this group? This action cannot be undone and will delete it for all members.')) {
+                    deleteBtn.innerHTML = 'Deleting...';
+                    deleteBtn.disabled = true;
+                    try {
+                        await deleteDoc(doc(db, 'chats', currentChatId));
+                        showToast('Group deleted', 'success');
+                        closeModal();
+                        document.getElementById('chat-header').style.visibility = 'hidden';
+                        document.getElementById('chat-input-area').style.display = 'none';
+                        document.getElementById('chat-messages').innerHTML = `<div style="text-align:center; color: var(--text-muted); margin: auto;"><div style="font-size:48px; margin-bottom:12px;">💬</div>Select a conversation or start a new one</div>`;
+                        currentChatId = null;
+                        currentChatData = null;
+                    } catch (err) {
+                        showToast('Failed to delete group', 'error');
+                        deleteBtn.innerHTML = 'Delete Group';
+                        deleteBtn.disabled = false;
+                    }
+                }
+            });
+        }
+    }
 }
 
 function escapeHtml(unsafe) {
