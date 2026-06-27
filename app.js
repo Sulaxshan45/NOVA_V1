@@ -63,6 +63,7 @@ function updateSidebarUser() {
     if (emailEl) emailEl.textContent = currentUser.email || '';
     if (companyEl) {
       const parts = [];
+      if (currentUser.novdId) parts.push(`<span style="color:var(--status-green);">NOVD ID: ${currentUser.novdId}</span>`);
       if (currentUser.designation) parts.push(currentUser.designation);
       if (currentUser.company) parts.push('🏢 ' + currentUser.company);
       if (parts.length) {
@@ -697,14 +698,25 @@ function showProfileSetup(prefillName, prefillEmail, prefillPicture, onComplete)
           return;
         }
 
+        // Generate unique NOVD ID
+        let novdId = '';
+        let isUnique = false;
+        while (!isUnique) {
+            novdId = Math.floor(10000 + Math.random() * 90000).toString();
+            const idQuery = query(collection(db, 'users'), where('novdId', '==', novdId));
+            const idQs = await getDocs(idQuery);
+            if (idQs.empty) isUnique = true;
+        }
+
         closeModal();
-        onComplete(name, username, designation, company, uploadedPictureBase64);
+        onComplete(name, username, designation, company, uploadedPictureBase64, novdId);
       } catch (err) {
         console.warn('Firestore check error (proceeding anyway):', err);
         // If Firestore is unavailable/not enabled, skip the uniqueness check
         // and allow the user to log in — Firestore will be checked once enabled
+        let novdId = Math.floor(10000 + Math.random() * 90000).toString();
         closeModal();
-        onComplete(name, username, designation, company, uploadedPictureBase64);
+        onComplete(name, username, designation, company, uploadedPictureBase64, novdId);
       }
     };
 
@@ -771,9 +783,10 @@ async function handleFirebaseAuth(firebaseUser) {
     };
 
     closeModal();
-    showProfileSetup(profile.name, profile.email, profile.picture, async (name, username, designation, company, picture) => {
+    showProfileSetup(profile.name, profile.email, profile.picture, async (name, username, designation, company, picture, novdId) => {
       const user = {
         id: userId,
+        novdId: novdId,
         name: name,
         username: username,
         designation: designation,
@@ -947,10 +960,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Guest Sign In Button
   document.getElementById('btn-login-guest')?.addEventListener('click', () => {
-    showProfileSetup('', '', '', async (name, username, designation, company, picture) => {
+    showProfileSetup('', '', '', async (name, username, designation, company, picture, novdId) => {
       const guestId = `guest_${Math.random().toString(36).substring(2, 11)}`;
       const user = {
         id: guestId,
+        novdId: novdId,
         name: name,
         username: username,
         designation: designation,
