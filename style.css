@@ -2442,6 +2442,201 @@ body.light-theme .dropdown-item--danger:hover {
   background: rgba(239, 68, 68, 0.06);
   color: #b91c1c;
 }
+.sidebar-user__avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2px solid rgba(124, 58, 237, 0.5);
+  object-fit: cover;
+}
+
+.sidebar-user__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-user__name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-user__email {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-user__logout-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  transition: all var(--transition);
+}
+
+.sidebar-user__logout-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+/* Light Theme overrides */
+body.light-theme .login-screen {
+  background: radial-gradient(ellipse at 50% 50%, #eef2f7 0%, #dcdfe8 100%);
+}
+
+body.light-theme .login-card {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .login-divider::before,
+body.light-theme .login-divider::after {
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+
+/* ============================================================
+   USER PROFILE DROPDOWN (TOPBAR)
+   ============================================================ */
+.user-menu-container {
+  position: relative;
+  display: inline-block;
+  margin-left: 12px;
+}
+
+.topbar-user-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: all var(--transition);
+}
+
+.topbar-user-btn:hover {
+  transform: scale(1.05);
+}
+
+.topbar-user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(124, 58, 237, 0.4);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* user-dropdown styles defined above at line ~398 */
+
+.user-dropdown-info {
+  padding: 12px 16px;
+  text-align: left;
+}
+
+.user-dropdown-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-dropdown-email {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: var(--glass-border);
+  margin: 6px 0;
+}
+
+.dropdown-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+.dropdown-item-icon {
+  font-size: 14px;
+}
+
+.dropdown-item--danger {
+  color: #f87171;
+}
+
+.dropdown-item--danger:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+}
+
+/* Light Theme overrides for Profile Dropdown */
+body.light-theme .user-dropdown {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .user-dropdown-name {
+  color: #1a1a2e;
+}
+
+body.light-theme .user-dropdown-email {
+  color: #6b7280;
+}
+
+body.light-theme .dropdown-item {
+  color: #374151;
+}
+
+body.light-theme .dropdown-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: #1a1a2e;
+}
+
+body.light-theme .dropdown-item--danger {
+  color: #dc2626;
+}
+
+body.light-theme .dropdown-item--danger:hover {
+  background: rgba(239, 68, 68, 0.06);
+  color: #b91c1c;
+}
 
 body.light-theme .dropdown-divider {
   background: rgba(0, 0, 0, 0.06);
@@ -2451,4 +2646,70 @@ body.light-theme .dropdown-divider {
 .btn-block {
   width: 100%;
   display: flex;
+}
+
+/* ============================================================
+   PRINT STYLES
+   ============================================================ */
+@media print {
+  /* Hide non-printable UI elements */
+  .sidebar, .topbar, .user-menu-container, .modal-overlay, .toast-container,
+  button, .btn {
+    display: none !important;
+  }
+
+  /* Reset layout to full width */
+  body, html, #app-container, .main-content {
+    background: #fff !important;
+    color: #000 !important;
+    height: auto !important;
+    min-height: auto !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  /* Show the official letterhead */
+  #official-print-header {
+    display: block !important;
+  }
+
+  /* Ensure only the active section is printed */
+  .section-content {
+    display: none !important;
+  }
+  .section-content:not([style*="display: none"]) {
+    display: block !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Adjust tables and cards for print */
+  .table-wrap, .glass-card, .data-table, .gantt-chart {
+    border: 1px solid #ccc !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    color: #000 !important;
+    page-break-inside: avoid;
+  }
+  
+  .data-table th, .data-table td {
+    color: #000 !important;
+    border-bottom: 1px solid #ccc !important;
+    padding: 8px !important;
+  }
+
+  .data-table th {
+    background: #f0f0f0 !important;
+  }
+
+  /* Text colors */
+  h1, h2, h3, h4, span, div, p {
+    color: #000 !important;
+    text-shadow: none !important;
+  }
 }

@@ -69,6 +69,7 @@ export function renderDashboard() {
       <div class="dashboard-meta">
         <span>📍 ${project.location || '—'}</span>
         <span>📅 ${formatDate(project.startDate)}</span>
+        <button class="btn btn-ghost btn-sm" onclick="window.preparePrint('Project Dashboard')">🖨️ Print PDF</button>
       </div>
     </div>
 

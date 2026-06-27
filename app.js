@@ -55,15 +55,25 @@ function updateSidebarUser() {
   const nameEl = document.getElementById('topbar-username');
   const emailEl = document.getElementById('topbar-email');
   const companyEl = document.getElementById('topbar-company');
+  const novdEl = document.getElementById('topbar-novdid');
 
   if (currentUser && topbarUser) {
     topbarUser.style.display = 'flex';
     if (avatarEl) avatarEl.src = currentUser.picture || 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&h=150&q=80';
     if (nameEl) nameEl.textContent = currentUser.name || 'User';
     if (emailEl) emailEl.textContent = currentUser.email || '';
+    
+    if (novdEl) {
+      if (currentUser.novdId) {
+        novdEl.textContent = `NOVD ID: ${currentUser.novdId}`;
+        novdEl.style.display = 'inline-block';
+      } else {
+        novdEl.style.display = 'none';
+      }
+    }
+
     if (companyEl) {
       const parts = [];
-      if (currentUser.novdId) parts.push(`<span style="color:var(--status-green);">NOVD ID: ${currentUser.novdId}</span>`);
       if (currentUser.designation) parts.push(currentUser.designation);
       if (currentUser.company) parts.push('🏢 ' + currentUser.company);
       if (parts.length) {
@@ -258,16 +268,7 @@ function renderSettings() {
         </div>
       </div>
 
-      <!-- App Info -->
-      <div class="glass-card">
-        <h3 class="card-title">ℹ️ App Info</h3>
-        <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px">
-          <div class="info-row"><span>Version</span><span>1.0.0</span></div>
-          <div class="info-row"><span>Projects</span><span>${getProjects().length}</span></div>
-          <div class="info-row"><span>Storage</span><span>localStorage</span></div>
-          <div class="info-row"><span>Built with</span><span>Vanilla JS</span></div>
-        </div>
-      </div>
+
     </div>
   `;
 
@@ -1096,3 +1097,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.navigateTo(project ? 'dashboard' : 'projects');
   }
 });
+
+// ============================================================
+// PDF PRINTING HELPER
+// ============================================================
+window.preparePrint = function(docTitle) {
+  const settings = getSettings();
+  const companyName = settings.companyName || 'NOVA Construction';
+  const activeProjectId = getActiveProjectId();
+  const projects = getProjects();
+  const project = projects.find(p => p.id === activeProjectId);
+  const projectName = project ? project.name : 'Global View';
+
+  const titleEl = document.getElementById('print-document-title');
+  const compEl = document.getElementById('print-company-name');
+  const projEl = document.getElementById('print-project-name');
+
+  if(compEl) compEl.textContent = companyName;
+  if(projEl) projEl.textContent = projectName;
+  if(titleEl) titleEl.textContent = docTitle;
+
+  window.print();
+};

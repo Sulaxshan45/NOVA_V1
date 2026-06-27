@@ -61,7 +61,10 @@ export function renderBilling() {
           ${project.name} · Mason: ${formatCurrency(masonRate)}/day · Labour: ${formatCurrency(labourRate)}/day · Margin: ${profitMargin}%
         </p>
       </div>
-      <button class="btn btn-primary" id="btn-export-boq">📄 Export BOQ PDF</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="window.preparePrint('Billing & BOQ')">🖨️ Print PDF</button>
+        <button class="btn btn-primary" id="btn-export-boq">📄 Export BOQ (jsPDF)</button>
+      </div>
     </div>
 
     <!-- Summary cards -->
